@@ -35,6 +35,33 @@ Constructor defines the model parameters and activations, it receives:
 Forward method returns:  
 - slope, intercept
 
+Class suggestion:
+```
+import torch  
+from torch import nn
+
+
+class NeuralNetwork(nn.Module):
+    def __init__(self, frame_dim, esn_dim, last_dim):
+        super(NeuralNetwork, self).__init__()
+        self.combined2last = nn.Sequential(
+            nn.Linear(frame_dim+esn_dim, last_dim),
+            nn.ReLU()
+        )        
+        # slope and intercept dim is the same as frame dim
+        self.last2slope = nn.Sequential(
+            nn.Linear(last_dim, frame_dim),
+            nn.Tanh()
+        )
+        self.last2intercept = nn.Linear(last_dim, frame_dim)
+    def forward(self, x_frame, h_esn):
+        combined = torch.cat((x_frame, h_esn))
+        q_hidden = self.combined2last(combined)
+        slope = self.last2slope(q_hidden)
+        intercept = self.last2intercept(q_hidden)
+        return slope, intercept
+```
+
 #### FlowLayer
 A single flow layer.
 Constructor creates and saves a nn object with random params. It receives:  
