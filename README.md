@@ -3,6 +3,7 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
+- [x] Code suggestion for the neural network class that returns s and mu.
 - [ ] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
 - [ ] Add abstract code for ESN network (Aleix)
 ```
