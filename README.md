@@ -41,10 +41,10 @@ Constructor creates and saves a nn object with random params. Itreceives:
 - net_model_class (the NeuralNetwork class)
 
 Method inverse(x_frame, h_esn, b_mask):
-b_mask can be b_A or b_B, because the functional form is the same.
+b_mask can be b_A or b_B, because the functional form is the same.  
 returns f_x    
 
-Method transform(z, h_esn, b_mask)  
+Method transform(z, h_esn, b_mask)    
 returns g_z
 
 
