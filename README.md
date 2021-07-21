@@ -3,10 +3,13 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
-- [ ] Add abstract code for ESN network (incomplete tasks)
+- [ ] Add abstract code for ESN network (Aleix)
 ```
 # Insert code within these kind of blocks
 ```
+- [ ] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
+- [ ] Add pseudocode for FlowLayer class (Aleix)
+- [ ] Design the biggest Normalizing Flow class
 - [x] Code for RealNVP (checked / completed tasks)
 
 ## Code Requirements
@@ -77,5 +80,9 @@ returns f_x
 
 Method transform(z, h_esn, b_mask)    
 returns g_z
+
+
+#### NormalizingFlow
+Todefine
 
 
