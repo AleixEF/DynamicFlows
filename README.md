@@ -37,8 +37,11 @@ Forward method returns:
 
 #### FlowLayer
 A single flow layer.
-Constructor creates and saves a nn object with random params. Itreceives:  
+Constructor creates and saves a nn object with random params. It receives:  
 - net_model_class (the NeuralNetwork class)
+- input_dim     
+- last_dim  
+- esn_dim      
 
 Method inverse(x_frame, h_esn, b_mask):
 b_mask can be b_A or b_B, because the functional form is the same.  
