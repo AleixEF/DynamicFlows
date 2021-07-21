@@ -64,7 +64,7 @@ class NeuralNetwork(nn.Module):
         
     def forward(self, x_frame, h_esn):
         combined = torch.cat((x_frame, h_esn))
-        q_hidden = self.combined2last(combined)
+        q_last = self.combined2last(combined)
         slope = self.last2slope(q_hidden)
         intercept = self.last2intercept(q_hidden)
         return slope, intercept
