@@ -54,6 +54,7 @@ class NeuralNetwork(nn.Module):
             nn.Tanh()
         )
         self.last2intercept = nn.Linear(last_dim, frame_dim)
+        
     def forward(self, x_frame, h_esn):
         combined = torch.cat((x_frame, h_esn))
         q_hidden = self.combined2last(combined)
