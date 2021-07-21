@@ -5,6 +5,7 @@ This repository is created to contain code related to the project *'Dynamic norm
 List of tasks:
 - [x] Code suggestion for the neural network class that returns s and mu (see below).
 - [x] Suggestion of different class skeletons (see below).
+- [ ] Agree with suggested variable names (see below). Anubhab
 - [ ] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
 - [ ] Add abstract code for ESN network (Aleix)
 ```
