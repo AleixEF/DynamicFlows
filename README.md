@@ -14,7 +14,7 @@ List of tasks:
 - The code must allow creating a mixture model of normalizing flows.
 
 ## Variable names VS Report names
-- input_dim VS D  
+- frame_dim VS D  
 - esn_dim VS N  
 - h_esn VS h_t  
 - last_dim VS l  (the dimension of the variable q)  
