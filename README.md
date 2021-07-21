@@ -6,11 +6,8 @@ List of tasks:
 - [x] Code suggestion for the neural network class that returns s and mu (see below).
 - [x] Suggestion of different class skeletons (see below).
 - [ ] Agree with suggested variable names (see below). Anubhab
-- [ ] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
-- [ ] Add abstract code for ESN network (Aleix)
-```
-# Insert code within these kind of blocks
-```
+- [x] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
+- [x] Add abstract code for ESN network (Aleix)`(I have pushed a esn file with the code)
 - [ ] Add pseudocode for FlowLayer class (Aleix)
 - [ ] Design the biggest Normalizing Flow class
 - [x] Code for RealNVP (checked / completed tasks)
