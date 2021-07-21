@@ -41,7 +41,8 @@ Constructor defines the model parameters and activations, it receives:
 Forward method returns:  
 - slope, intercept
 
-Class suggestion:
+Class suggestion:  
+**Important comment: Notice that equation 20 in the report for q is equivalent to concatenating x and b*z into a new vector, concatenating horizontally the matrices L and W into a new matrix and then just performing a matrix vector product and apply the non-linearity. This is advantegeous because it reduces the amount of script variables and it already contains all parameters. Moreover, creating two separate layers (one for w and one for L) would create 2 biases, which is undesirable.**  
 ```
 import torch  
 from torch import nn
