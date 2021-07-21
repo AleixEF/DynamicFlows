@@ -20,26 +20,31 @@ List of tasks:
 - last_dim VS l  (the dimension of the variable q)  
 - slope VS s  
 - intercept VS mu
-
+- x_frame VS x_t  
+- b_mask VS b  
 
 ## Code Skeleton
 ### Classes
 I suggest the creation of the following classes:
 #### NeuralNetwork
 From the Pytorch nn.Module super class. It contains the nn parameters.  
-Constructor receives:  
+Constructor defines the model parameters and activations, it receives:  
 - input_dim     
 - last_dim  
-- esn_dim    
-And it defines the model parameters and activations.  
+- esn_dim      
 Forward method returns:  
 - slope, intercept
 
 #### FlowLayer
 A single flow layer.
-Constructor receives:  
+Constructor creates and saves a nn object with random params. Itreceives:  
 - net_model_class (the NeuralNetwork class)
-It creates and saves the nn object.
 
+Method inverse(x_frame, h_esn, b_mask):
+b_mask can be b_A or b_B, because the functional form is the same.
+returns f_x    
+
+Method transform(z, h_esn, b_mask)  
+returns g_z
 
 
