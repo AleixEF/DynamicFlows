@@ -38,9 +38,9 @@ def build_reservoir(esn_dim, conn_per_neur, spec_rad):
 
 def build_Wfb(esn_dim, frame_dim, spec_rad):
     Wfb = np.random.normal(size=(esn_dim, frame_dim))
-    U, S, VH = np.linalg.svd(Wfb) #S contains the sqrt of eigenvs of Wfb*WfbH 
+    U, S, VH = np.linalg.svd(Wfb) #  S contains the sqrt of eigenvs of Wfb*WfbH 
     Wfb = Wfb * (np.sqrt(spec_rad) / np.max(S))
-    #now the max eigenv of Wfb*(Wfb)T is equal to spec_rad 
+    # now the max eigenv of Wfb*(Wfb)T is equal to spec_rad 
     return Wfb
     
 def change_spectral_radius(Wres, new_radius):
@@ -75,7 +75,7 @@ def main():
     plt.show()
     
     # checking that the sparsity and spectral radius are correct 
-    print(np.sum(esn.Wres != 0) == esn_dim * conn_per_neur)
+    print(np.sum(esn.Wres != 0) == (esn_dim * conn_per_neur))
     
     eigenvalues = np.linalg.eig(esn.Wres)[0]
     max_absolute_eigen = np.max(np.absolute(eigenvalues))
