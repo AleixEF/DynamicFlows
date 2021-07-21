@@ -29,7 +29,7 @@ I suggest the creation of the following classes:
 #### NeuralNetwork
 From the Pytorch nn.Module super class. It contains the nn parameters.  
 Constructor defines the model parameters and activations, it receives:  
-- input_dim     
+- frame_dim     
 - last_dim  
 - esn_dim      
 Forward method returns:  
@@ -39,7 +39,7 @@ Forward method returns:
 A single flow layer.
 Constructor creates and saves a nn object with random params. It receives:  
 - net_model_class (the NeuralNetwork class)
-- input_dim     
+- frame_dim     
 - last_dim  
 - esn_dim      
 
