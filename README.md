@@ -107,4 +107,23 @@ returns g_z
 #### NormalizingFlow
 Todefine
 
+### Challenges:
+- [ ] Decide upon the structure for handling variable length sequences. Whether to use *masks + padding upto max.length* or *something similar to pack_padded_sequences*? (right now, we think using *masks + padding upto max.length*)  
+
+*Assumption:* Input tensors $\texttt{x}$ will be of the form $\left(N_{b}, T_{max}, D\right)$, where $N_{b}$ would denote the batch size, $T_{max}$ would denote the maximum length of the sequence over all $N$ sequences in the dataset $\left(\text{i.e. } T_{max} = \max\left(T_{1}, T_{2}, T_{3}, \ldots, T_{N}\right)\right)$ and $D$ would be the dimensionality of the input/feature vector.
+
+- [ ] Write dataloaders and related utils (possibility to reuse some if TIMIT dataset is used from previous project (*Anubhab*)).
+
+- [ ] Think about ways on optimizing the training and computation for the setup. Currently, we think that the computation would be something like:
+    ```
+    for epoch in range(nepochs):
+        for n, data, ..., in enumerate(dataloader):
+            for n_seq, seq in enumerate(range(len(data))):
+                # Possibly another for loop here as well
+                # for t in range(seq[1]):
+
+            # do something here 
+    ```
+    We discussed that this could be possibly sped up a bit by pre-computing the ESN encodings for the entire dataset beforehand, and loading those encodings on a batch-wise basis with the data in the dataloader.
+
 
