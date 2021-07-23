@@ -26,6 +26,27 @@ List of tasks:
 - x_frame VS x_t  
 - b_mask VS b  
 
+## Proposed folder structure
+I think it will greatly benefit in the long run if we can have folders for storing specific files instead of dumping all the code in the main / project folder.
+```
+data/ # This directory would contain the data and related information
+config/ # This directory would contain the .json files containing configurations for the hyperparameters
+|    - __init__.py
+|    - config_flows.json
+|    - config_esn.json
+main.py # The main function that would run the program
+src/ # This would contain files containing modules
+|    - __init__.py
+|    - flows.py
+|    - esn.py
+utils/ #This would contain .py files having helper functions that are called by files in /src/
+|    - __init__.py
+|    - preprocess.py
+|    - flow_layer_utils.py
+|    - data_utils.py
+|    - etc.
+etc.
+```
 ## Code Skeleton
 ### Classes
 I suggest the creation of the following classes:
