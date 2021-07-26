@@ -110,7 +110,7 @@ Todefine
 ### Challenges:
 - [ ] Decide upon the structure for handling variable length sequences. Whether to use *masks + padding upto max.length* or *something similar to pack_padded_sequences*? (right now, we think using *masks + padding upto max.length*)  
 
-*Assumption:* Input tensors $\texttt{x}$ will be of the form $\left(N_{b}, T_{max}, D\right)$, where $N_{b}$ would denote the batch size, $T_{max}$ would denote the maximum length of the sequence over all $N$ sequences in the dataset $\left(\text{i.e. } T_{max} = \max\left(T_{1}, T_{2}, T_{3}, \ldots, T_{N}\right)\right)$ and $D$ would be the dimensionality of the input/feature vector.
+*Assumption:* Input tensors `x` will be of the shape `(N_b, T_max, D)`, where `N_b` would denote the batch size, `T_max` would denote the maximum length of the sequence over all `N` sequences in the dataset (i.e. `T_max = max(T_1, T_2, T_3, ..., T_N)` and `D` would be the dimensionality of the input/feature vector.
 
 - [ ] Write dataloaders and related utils (possibility to reuse some if TIMIT dataset is used from previous project (*Anubhab*)).
 
