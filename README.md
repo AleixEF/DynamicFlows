@@ -124,6 +124,6 @@ Todefine
 
             # do something here 
     ```
-    We discussed that this could be possibly sped up a bit by pre-computing the ESN encodings for the entire dataset beforehand, and loading those encodings on a batch-wise basis with the data in the dataloader.
+    *Update:* Due to memory concerns, it will be better to get batch-wise encodings from the echo state network while in the training loop since, the operation doesn't involve computing gradients. 
 
 
