@@ -3,13 +3,11 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
-- [x] Code suggestion for the neural network class that returns s and mu (see below).
-- [x] Suggestion of different class skeletons (see below).
-- [ ] Agree with suggested variable names (see below). Anubhab
-- [x] Adapt the ESN for just the encoding part and for pytorch tensors (Aleix)
-- [x] Add abstract code for ESN network (Aleix)`(I have pushed a esn file with the code)
-- [ ] Add pseudocode for FlowLayer class (Aleix)
+- [ ] Integrate toeplitz matrix for the neural network class that returns s and mu (see below).
+- [ ] The dataloader and data utils for the Timit dataset (Anubhab)
 - [ ] Design the biggest Normalizing Flow class
+- [x] Agree with suggested variable names.
+- [ ] Adapt the ESN to work in batches (Aleix)
 - [x] Code for RealNVP (checked / completed tasks)
 
 ## Code Requirements
@@ -125,5 +123,13 @@ Todefine
             # do something here 
     ```
     *Update:* Due to memory concerns, it will be better to get batch-wise encodings from the echo state network while in the training loop since, the operation doesn't involve computing gradients. 
+
+## Variable shapes
+
+- x_seq will have shape (seq_length, batch_sie, frame_dim)
+- P(x_seq) shape (batch_size, 1) 
+- P(x_t|x_1:t-1) shape (batch_size, 1) !! but will require multiplying by a mask at each time step
+- The mask at each time step can be generated from a fixed vector containing the true lenght of each sequence in the batch.
+- The dataloader must give at each call (x_seq, true_lengths).
 
 
