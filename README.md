@@ -4,11 +4,15 @@ This repository is created to contain code related to the project *'Dynamic norm
 
 List of tasks:
 - [x] Integrate toeplitz matrix for the neural network class that returns s and mu (Aleix).
-- [ ] Push the NVP that Aleix wrote and put everything in a folder callled info (Aleix).
+- [x] Push the NVP that Aleix wrote and put everything in a folder callled info (Aleix).
 - [ ] Folder data structure (Anubhab)
 - [ ] The dataloader and data utils for the Timit dataset (Anubhab)
 - [ ] Adapt the ESN to work in batches (Aleix)
 - [ ] Design the biggest Normalizing Flow class
+
+## System requirements
+- Python 3
+- Pytorch 1.9+ (We need the parametrize functionality that is only available in pytorch 1.9+)
 
 ## Code Requirements
 - The code must be general enough such that it is easy to add more than 2 normalizing flow layers.
@@ -43,6 +47,7 @@ utils/ #This would contain .py files having helper functions that are called by 
 |    - flow_layer_utils.py
 |    - data_utils.py
 |    - etc.
+Info/ #This will contain useful files that can be adapted or reused for our project and also information files.
 etc.
 ```
 ## Code Skeleton
