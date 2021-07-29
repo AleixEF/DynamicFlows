@@ -26,8 +26,9 @@ class EchoStateNetwork(object):
     def next_hidden_state(self, x_frame):
         # x_frame has shape (batch_size, frame_dim)
         # h_state has shape (batch_size, esn_dim)
-        self.h_state = torch.tanh(self.h_state @ self.Wres.t()
-                                  + x_frame @ self.Wfb.t())                                 
+        self.h_state = torch.tanh(
+            self.h_state @ self.Wres.t() + x_frame @ self.Wfb.t()
+        )                                 
         return self.h_state
                 
     
