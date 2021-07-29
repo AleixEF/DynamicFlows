@@ -10,6 +10,10 @@ List of tasks:
 - [ ] Adapt the ESN to work in batches (Aleix)
 - [ ] Design the biggest Normalizing Flow class
 
+## System requiremtns
+- Python 3
+- Pytorch 1.9+ (We need the parametrize functionality that is only available in pytorch 1.9+)
+
 ## Code Requirements
 - The code must be general enough such that it is easy to add more than 2 normalizing flow layers.
 - The code must allow creating a mixture model of normalizing flows.
