@@ -12,7 +12,7 @@ import torch
 
 class EchoStateNetwork(object):
     def __init__(self, frame_dim, esn_dim=1000, 
-                 conn_per_neur=10,spectr_rad=0.8):
+                 conn_per_neur=10, spectr_rad=0.8):
         
         self.frame_dim = frame_dim
         self.esn_dim = esn_dim
