@@ -12,11 +12,12 @@ import torch
 
 class EchoStateNetwork(object):
     def __init__(self, frame_dim, esn_dim=1000, conn_per_neur=10,
-                                                               spectr_rad=0.8):
+                 spectr_rad=0.8):
+        
         self.frame_dim = frame_dim
         self.esn_dim = esn_dim
         
-        # init with zeros, but the final shape will be (batch size, esn_dim)
+        # init with esn_dim zeros, but the final shape will be (batch size, esn_dim)
         self.h_state = torch.zeros(esn_dim, dtype=torch.float64)
         
         self.Wfb = build_Wfb(esn_dim, frame_dim, spectr_rad)
@@ -26,7 +27,7 @@ class EchoStateNetwork(object):
         # x_frame has shape (batch_size, frame_dim)
         # h_state has shape (batch_size, esn_dim)
         self.h_state = torch.tanh(self.h_state @ self.Wres.t()
-                                  + x_frame @ self.Wfb.t())
+                                  + x_frame @ self.Wfb.t())                                 
         return self.h_state
                 
     
