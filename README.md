@@ -47,6 +47,7 @@ utils/ #This would contain .py files having helper functions that are called by 
 |    - flow_layer_utils.py
 |    - data_utils.py
 |    - etc.
+Info/ #This will contain useful files that can be adapted or reused for our project and also information files.
 etc.
 ```
 ## Code Skeleton
