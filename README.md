@@ -60,17 +60,19 @@ Forward method returns:
 Class suggestion:  
 **Important comment: Notice that equation 20 in the report for q is equivalent to concatenating x and b*z into a new vector, concatenating horizontally the matrices L and W into a new matrix and then just performing a matrix vector product and apply the non-linearity. This is advantegeous because it reduces the amount of script variables and it already contains all parameters. Moreover, creating two separate layers (one for w and one for L) would create 2 biases, which is undesirable.**  
 ```
-import torch  
-from torch import nn
-
-
 class NeuralNetwork(nn.Module):
-    def __init__(self, frame_dim, esn_dim, last_dim):
+    def __init__(self, frame_dim, esn_dim, last_dim, toeplitz=True):
         super(NeuralNetwork, self).__init__()
         self.combined2last = nn.Sequential(
             nn.Linear(frame_dim+esn_dim, last_dim),
             nn.ReLU()
-        )        
+        )
+        if toeplitz:
+            parametrize.register_parametrization(
+                self.combined2last[0], 
+                "weight", Toeplitz()
+            )        
+        
         # slope and intercept dim is the same as frame dim
         self.last2slope = nn.Sequential(
             nn.Linear(last_dim, frame_dim),
@@ -79,7 +81,8 @@ class NeuralNetwork(nn.Module):
         self.last2intercept = nn.Linear(last_dim, frame_dim)
         
     def forward(self, x_frame, h_esn):
-        combined = torch.cat((x_frame, h_esn))
+        # concat along the frame dim (last dim), not along the batch_size dim
+        combined = torch.cat((x_frame, h_esn), dim=-1)  
         q_last = self.combined2last(combined)
         slope = self.last2slope(q_last)
         intercept = self.last2intercept(q_last)
