@@ -3,7 +3,7 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
-- [ ] Integrate toeplitz matrix for the neural network class that returns s and mu (Aleix).
+- [x] Integrate toeplitz matrix for the neural network class that returns s and mu (Aleix).
 - [ ] Push the NVP that Aleix wrote and put everything in a folder callled info (Aleix).
 - [ ] Folder data structure (Anubhab)
 - [ ] The dataloader and data utils for the Timit dataset (Anubhab)
