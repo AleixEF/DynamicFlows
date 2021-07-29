@@ -3,7 +3,7 @@
 """
 Created on Thu Jul 29 12:32:19 2021
 
-@author: colibri
+@author: Aleix Espuna Fontcuberta
 """
 
 
@@ -79,7 +79,7 @@ def main():
     print()
     optimizer = torch.optim.SGD(net.parameters(), lr=0.1)
     
-    # We compute an arbitrari loss function
+    # We compute an arbitrary loss function
     slope, _ = net(x, h_esn)
     loss = slope.sum()
     
