@@ -88,6 +88,7 @@ class NeuralNetwork(nn.Module):
         intercept = self.last2intercept(q_last)
         return slope, intercept
 ```
+See the file toeplitz_net.py in info/ to take a look at the Toeplitz class that transforms a random matrix into a toeplitz matrix.
 
 #### FlowLayer
 A single flow layer.
