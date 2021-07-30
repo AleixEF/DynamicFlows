@@ -7,8 +7,8 @@ List of tasks:
 - [x] Push the NVP that Aleix wrote and put everything in a folder callled info (Aleix).
 - [ ] Folder data structure (Anubhab)
 - [ ] The dataloader and data utils for the Timit dataset (Anubhab)
-- [ ] Adapt the ESN to work in batches (Aleix)
-- [ ] Design the biggest Normalizing Flow class
+- [x] Adapt the ESN to work in batches (Aleix)
+- [x] Design the biggest Normalizing Flow class
 
 ## System requirements
 - Python 3
