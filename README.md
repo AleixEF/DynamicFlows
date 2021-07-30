@@ -32,22 +32,26 @@ List of tasks:
 I think it will greatly benefit in the long run if we can have folders for storing specific files instead of dumping all the code in the main / project folder.
 ```
 data/ # This directory would contain the data and related information
-config/ # This directory would contain the .json files containing configurations for the hyperparameters
-|    - __init__.py
-|    - config_flows.json
-|    - config_esn.json
 main.py # The main function that would run the program
-src/ # This would contain files containing modules
+lib/ # The father package containing the different modules.
 |    - __init__.py
-|    - flows.py
-|    - esn.py
-     - net.py
-utils/ #This would contain .py files having helper functions that are called by files in /src/
-|    - __init__.py
-|    - preprocess.py
-|    - flow_layer_utils.py
-|    - data_utils.py
-|    - etc.
+|
+|    -config/ # This directory would contain the .json files containing configurations for the hyperparameters
+|         |    - __init__.py
+|         |    - config_flows.json
+|         |    - config_esn.json
+|     
+|    -src/ # This would contain files containing modules
+|         |    - __init__.py
+|         |    - flows.py
+|         |    - esn.py
+|         |    - net.py
+|    -utils/ #This would contain .py files having helper functions that are called by files in /src/
+|         |    - __init__.py
+|         |    - preprocess.py
+|         |    - flow_layer_utils.py
+|         |    - data_utils.py
+|         |    - etc.
 Info/ #This will contain useful files that can be adapted or reused for our project and also information files.
 etc.
 ```
