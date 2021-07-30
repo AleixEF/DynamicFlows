@@ -41,6 +41,7 @@ src/ # This would contain files containing modules
 |    - __init__.py
 |    - flows.py
 |    - esn.py
+     - net.py
 utils/ #This would contain .py files having helper functions that are called by files in /src/
 |    - __init__.py
 |    - preprocess.py
