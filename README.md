@@ -116,9 +116,10 @@ returns g_z
 Todefine
 
 ### Challenges:
-- [ ] Decide upon the structure for handling variable length sequences. Whether to use *masks + padding upto max.length* or *something similar to pack_padded_sequences*? (right now, we think using *masks + padding upto max.length*)  
+- [x] Decide upon the structure for handling variable length sequences. Whether to use *masks + padding upto max.length* or *something similar to pack_padded_sequences*? 
+A sequence will have shape (T_max, batch_size, frame_dim).  
 
-*Assumption:* Input tensors `x` will be of the shape `(N_b, T_max, D)`, where `N_b` would denote the batch size, `T_max` would denote the maximum length of the sequence over all `N` sequences in the dataset (i.e. `T_max = max(T_1, T_2, T_3, ..., T_N)` and `D` would be the dimensionality of the input/feature vector.
+`T_max` would denote the maximum length of the sequence over all `N` sequences in the dataset (i.e. `T_max = max(T_1, T_2, T_3, ..., T_N).
 
 - [ ] Write dataloaders and related utils (possibility to reuse some if TIMIT dataset is used from previous project (*Anubhab*)).
 
@@ -136,10 +137,10 @@ Todefine
 
 ## Variable shapes
 
-- x_seq will have shape (seq_length, batch_sie, frame_dim)
-- P(x_seq) shape (batch_size, 1) 
-- P(x_t|x_1:t-1) shape (batch_size, 1) !! but will require multiplying by a mask at each time step
+- x_seq: (seq_length, batch_sie, frame_dim)
+- P(x_seq): (batch_size, 1) 
+- P(x_t|x_1:t-1): (batch_size, 1) !! but will require multiplying by a mask at each time step
 - The mask at each time step can be generated from a fixed vector containing the true lenght of each sequence in the batch.
 - The dataloader must give at each call (x_seq, true_lengths).
-
+- b_mask: (1, batch_size)
 
