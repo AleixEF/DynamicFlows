@@ -21,7 +21,8 @@ List of tasks:
 ## Variable names VS Report names
 - frame_dim VS D  
 - esn_dim VS N  
-- h_esn VS h_t  
+- h_esn VS h_t
+- q_hidden VS q  
 - hidden_dim VS l  (the dimension of the variable q)  
 - slope VS s  
 - intercept VS mu
