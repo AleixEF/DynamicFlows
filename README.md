@@ -52,9 +52,12 @@ lib/ # The father package containing the different modules.
 |         |    - preprocess.py
 |         |    - flow_layer_utils.py
 |         |    - data_utils.py
-|         |    - etc.
-Info/ #This will contain useful files that can be adapted or reused for our project and also information files.
-etc.
+|    
+docs/ #This will contain useful files that can be adapted or reused for our project and also information files.
+|
+tests/ # To check performance and debugging
+    -context.py # to import the lib packages handling the different path. The test files will do: 
+    from context import flows, esn
 ```
 ## Code Skeleton
 ### Classes
