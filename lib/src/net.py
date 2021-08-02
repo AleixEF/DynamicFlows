@@ -13,30 +13,45 @@ import torch.nn.utils.parametrize as parametrize
 
 
 class NeuralNetwork(nn.Module):
-    def __init__(self, frame_dim, esn_dim, last_dim, toeplitz=True):
+    def __init__(self, frame_dim, esn_dim, 
+                 hidden_dim, num_hidden_layers, toeplitz=True):
+        
         super(NeuralNetwork, self).__init__()
-        self.combined2last = nn.Sequential(
-            nn.Linear(frame_dim+esn_dim, last_dim),
+        self.combined2hidden = nn.Sequential(
+            nn.Linear(frame_dim+esn_dim, hidden_dim),
             nn.ReLU()
         )
         if toeplitz:
             parametrize.register_parametrization(
-                self.combined2last[0], 
+                self.combined2hidden[0], 
                 "weight", Toeplitz()
-            )                
+            )
+        
+        # we stack a linear and a relu as many times as num_hidden_layers-1
+        # num_hidden_layers-1 because the combined2hidden layer already 
+        # generates a hidden layer
+        self.hidden2hidden = nn.ModuleList(
+             [nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.ReLU()) 
+              for _ in range(num_hidden_layers-1)]
+        )
+               
         # slope and intercept dim is the same as frame dim
-        self.last2slope = nn.Sequential(
-            nn.Linear(last_dim, frame_dim),
+        self.hidden2slope = nn.Sequential(
+            nn.Linear(hidden_dim, frame_dim),
             nn.Tanh()
         )
-        self.last2intercept = nn.Linear(last_dim, frame_dim)
+        self.hidden2intercept = nn.Linear(hidden_dim, frame_dim)
         
     def forward(self, x_frame, h_esn):
         # concat along the frame dim (last dim), not along the batch_size dim
         combined = torch.cat((x_frame, h_esn), dim=-1)  
-        q_last = self.combined2last(combined)
-        slope = self.last2slope(q_last)
-        intercept = self.last2intercept(q_last)
+        q_hidden = self.combined2hidden(combined)
+        
+        for linear_relu in self.hidden2hidden:
+            q_hidden = linear_relu(q_hidden)
+        
+        slope = self.hidden2slope(q_hidden)
+        intercept = self.hidden2intercept(q_hidden)
         return slope, intercept
     
     
@@ -62,3 +77,4 @@ class Toeplitz(nn.Module):
         return toep_matrix
 
 
+    

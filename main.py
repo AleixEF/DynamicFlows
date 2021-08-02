@@ -26,9 +26,10 @@ def main():
     # b_mask must have shape (1, frame_dim) Important or it will crash!
     b_mask = torch.tensor([[1, 1, 0, 0]], dtype=torch.float64)
     esn_dim = 500
-    last_dim = 10
+    hidden_dim = 10
     toeplitz = True
-    num_flow_layers = 2
+    num_flow_layers = 3
+    num_hidden_layers = 1
     l_rate = 0.001
     n_epochs = 100    
     #  all sequences have the same length
@@ -37,10 +38,11 @@ def main():
     
     # MODEL CREATION
     nf = NormalizingFlow(frame_dim=frame_dim, 
-                         num_layers=num_flow_layers, 
+                         num_flow_layers=num_flow_layers, 
                          b_mask=b_mask, 
                          esn_dim=esn_dim, 
-                         last_dim=last_dim, 
+                         hidden_dim=hidden_dim,
+                         num_hidden_layers=num_hidden_layers,
                          toeplitz=toeplitz)
     nf.double()
     
@@ -52,6 +54,7 @@ def main():
     
     optimizer = torch.optim.SGD(nf.parameters(), lr=l_rate)
     
+ 
     # TRAINING
     for i in range(n_epochs):
         loglike = nf.loglike_sequence(dataset, esn, seq_lengths)

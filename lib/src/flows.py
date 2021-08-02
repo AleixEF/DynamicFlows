@@ -14,15 +14,16 @@ from ..utils.flow_layer_utils import row_wise_dot_product, create_length_mask
 
 
 class NormalizingFlow(nn.Module):
-    def __init__(self, frame_dim, num_layers, 
-                 b_mask, esn_dim, last_dim, toeplitz):                  
+    def __init__(self, frame_dim, num_flow_layers, b_mask, esn_dim, 
+                 hidden_dim, num_hidden_layers, toeplitz):                  
         
         super(NormalizingFlow, self).__init__()
         self.b_mask = b_mask # shape (frame_dim)
-        self.num_layers = num_layers
+        self.num_flow_layers = num_flow_layers
         self.flow_layers = nn.ModuleList(
-            [FlowLayer(frame_dim, esn_dim, last_dim, toeplitz) 
-            for _ in range(self.num_layers)]
+            [FlowLayer(frame_dim, esn_dim, hidden_dim, num_hidden_layers, 
+                       toeplitz) 
+            for _ in range(self.num_flow_layers)]
         )
     
     def loglike_sequence(self, x_sequence, esn, seq_lengths):
@@ -92,9 +93,12 @@ class NormalizingFlow(nn.Module):
 
 
 class FlowLayer(nn.Module):
-    def __init__(self, frame_dim, esn_dim, last_dim, toeplitz):
+    def __init__(self, frame_dim, esn_dim, hidden_dim, num_hidden_layers, 
+                 toeplitz):
+        
         super(FlowLayer, self).__init__()
-        self.net = NeuralNetwork(frame_dim, esn_dim, last_dim, toeplitz)
+        self.net = NeuralNetwork(frame_dim, esn_dim, hidden_dim, 
+                                 num_hidden_layers, toeplitz)
     
     def f_inverse(self, x_frame, b_mask, h_esn):
         slope, intercept = self.net(b_mask*x_frame, h_esn)
