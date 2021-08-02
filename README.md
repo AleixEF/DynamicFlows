@@ -22,7 +22,7 @@ List of tasks:
 - frame_dim VS D  
 - esn_dim VS N  
 - h_esn VS h_t  
-- last_dim VS l  (the dimension of the variable q)  
+- hidden_dim VS l  (the dimension of the variable q)  
 - slope VS s  
 - intercept VS mu
 - x_frame VS x_t  
@@ -68,37 +68,10 @@ Forward method returns:
 - slope, intercept
 
 Class suggestion:  
-**Important comment: Notice that equation 20 in the report for q is equivalent to concatenating x and b*z into a new vector, concatenating horizontally the matrices L and W into a new matrix and then just performing a matrix vector product and apply the non-linearity. This is advantegeous because it reduces the amount of script variables and it already contains all parameters. Moreover, creating two separate layers (one for w and one for L) would create 2 biases, which is undesirable.**  
-```
-class NeuralNetwork(nn.Module):
-    def __init__(self, frame_dim, esn_dim, last_dim, toeplitz=True):
-        super(NeuralNetwork, self).__init__()
-        self.combined2last = nn.Sequential(
-            nn.Linear(frame_dim+esn_dim, last_dim),
-            nn.ReLU()
-        )
-        if toeplitz:
-            parametrize.register_parametrization(
-                self.combined2last[0], 
-                "weight", Toeplitz()
-            )        
-        
-        # slope and intercept dim is the same as frame dim
-        self.last2slope = nn.Sequential(
-            nn.Linear(last_dim, frame_dim),
-            nn.Tanh()
-        )
-        self.last2intercept = nn.Linear(last_dim, frame_dim)
-        
-    def forward(self, x_frame, h_esn):
-        # concat along the frame dim (last dim), not along the batch_size dim
-        combined = torch.cat((x_frame, h_esn), dim=-1)  
-        q_last = self.combined2last(combined)
-        slope = self.last2slope(q_last)
-        intercept = self.last2intercept(q_last)
-        return slope, intercept
-```
-See the file toeplitz_net.py in info/ to take a look at the Toeplitz class that transforms a random matrix into a toeplitz matrix.
+We have added the functionallity that allows choosing the number of hidden layers.
+All hidden layers will have the same input and output dimensions, which will be the dimension of the variable q, named (hidden_dim).
+The first layer, combined to hidden, can have Toeplitz matrix constraint.
+
 
 #### FlowLayer
 A single flow layer.
