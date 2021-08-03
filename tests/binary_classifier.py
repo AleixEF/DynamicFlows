@@ -26,7 +26,7 @@ Problems encountered:
     but also in the normalizing flow class. We should ensure that the default
     parameter is the same in both cases. I fixed it at 500 as default for the
     two classes. The defaults can not mismatch or an error will pop out.
-    Not very elegent ridht now.
+    Not very elegent right now.
 
 """
 
@@ -57,16 +57,14 @@ learning_rate = 1e-5
 
 
 hidden_layer_dim = 15
-b_mask = torch.ones((1, frame_dim), dtype=torch.float64)
-b_mask[0, frame_dim//2 :] = 0 
 
 esn_model = esn.EchoStateNetwork(frame_dim)
 
-nf0 = flows.NormalizingFlow(frame_dim, hidden_layer_dim, b_mask)
+nf0 = flows.NormalizingFlow(frame_dim, hidden_layer_dim)
 nf0.double()
 optimizer0 = torch.optim.SGD(nf0.parameters(), lr=learning_rate)
 
-nf1 = flows.NormalizingFlow(frame_dim, hidden_layer_dim, b_mask)
+nf1 = flows.NormalizingFlow(frame_dim, hidden_layer_dim)
 nf1.double()
 optimizer1 = torch.optim.SGD(nf1.parameters(), lr=learning_rate)
 
