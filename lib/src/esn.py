@@ -11,7 +11,7 @@ import torch
 
 
 class EchoStateNetwork(object):
-    def __init__(self, frame_dim, esn_dim=1000, 
+    def __init__(self, frame_dim, esn_dim=500, 
                  conn_per_neur=10, spectr_rad=0.8):
         
         self.frame_dim = frame_dim

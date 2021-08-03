@@ -18,7 +18,7 @@ class NormalizingFlow(nn.Module):
                  esn_dim=500, num_hidden_layers=1, toeplitz=True):                  
         
         super(NormalizingFlow, self).__init__()
-        self.b_mask = b_mask # shape (frame_dim)
+        self.b_mask = b_mask # shape (1, frame_dim)
         self.num_flow_layers = num_flow_layers
         self.flow_layers = nn.ModuleList(
             [FlowLayer(frame_dim, esn_dim, hidden_layer_dim, num_hidden_layers, 
@@ -26,7 +26,7 @@ class NormalizingFlow(nn.Module):
             for _ in range(self.num_flow_layers)]
         )
     
-    def loglike_sequence(self, x_sequence, esn, seq_lengths):
+    def loglike_sequence(self, x_sequence, esn, seq_lengths=None):
         # those sequences in the batch that do not reach max_seq_length have
         # been padded with zeros
         max_seq_length, batch_size, frame_dim = x_sequence.shape
@@ -35,11 +35,12 @@ class NormalizingFlow(nn.Module):
         # at t=0 there is no encoding, so h=0
         h_esn = torch.zeros((batch_size, esn.esn_dim), dtype=torch.float64)
         
-        for t_instant, x_frame in enumerate(x_sequence):
+        for frame_instant, x_frame in enumerate(x_sequence):
             # loglike frame has shape (batch_size, 1)
             loglike_frame = self.loglike_frame(x_frame, h_esn) 
             
-            length_mask = f_utils.create_length_mask(t_instant, seq_lengths)
+            length_mask = f_utils.create_length_mask(frame_instant, batch_size, 
+                                                     seq_lengths)
             loglike_seq += loglike_frame * length_mask 
             
             # preparing the encoding for the next iteration
