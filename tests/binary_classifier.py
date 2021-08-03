@@ -12,6 +12,25 @@ import torch
 from context import flows, esn 
 
 
+"""
+We perfrom a binary classifiction task by training one model per each class.
+In this testfile we generate data belonging to class 0 from one gaussian 
+that has 0 mean. Class 1 data is generated from a gaussian that has 1 mean.
+
+Problems encountered: 
+    -Exploding gradient problem. It forced me to choose a 
+    very low value for the learning rate. We should introduce batch 
+    normalization.
+
+    -Deafult value for esn_dim. esn_dim appears in the EchoStateNetwork class
+    but also in the normalizing flow class. We should ensure that the default
+    parameter is the same in both cases. I fixed it at 500 as default for the
+    two classes. The defaults can not mismatch or an error will pop out.
+    Not very elegent ridht now.
+
+"""
+
+
 def train(nf_model, esn_model, batch, optimizer):
     loglike = nf_model.loglike_sequence(batch, esn_model)
     loss = -loglike.sum()
@@ -51,8 +70,7 @@ nf1 = flows.NormalizingFlow(frame_dim, hidden_layer_dim, b_mask)
 nf1.double()
 optimizer1 = torch.optim.SGD(nf1.parameters(), lr=learning_rate)
 
-
-                                                   
+                                              
 for iteration in range(num_training_batches):
     batch0 = np.random.multivariate_normal(mean=np.zeros(frame_dim), 
                                            cov=np.identity(frame_dim),
