@@ -110,6 +110,7 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     return xtrain, ytrain, xtest, ytest, class2phn, class2int
 
 if __name__ == "__main__":
+    #TODO: To fix and adapt this for our task
     usage = "Build separate datasets for each family of phonemes.\n\"" \
             "Each data set contains the sequences of one phoneme.\n"\
             "Usage: python bin/prepare_data.py \"[nclasses]/[totclasses (61|39)]\" [training data] [testing data]\n"\

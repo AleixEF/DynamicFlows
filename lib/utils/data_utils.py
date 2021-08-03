@@ -217,7 +217,7 @@ class CustomSequenceDataset(Dataset):
     Args:
         Dataset ([type]): [description]
     """
-    #TODO: This needs to be fixed for the data format we are talking about
+
     def __init__(self, xtrain, lengths, device='cpu'):
         self.data = [torch.FloatTensor(x).to(device) for x in xtrain]
         self.lengths = lengths
@@ -233,21 +233,27 @@ class CustomSequenceDataset(Dataset):
         return (self.data[idx], self.lengths[idx])
         #return (self.data[idx], self.mask[idx])
 
-def my_collate_fn(batch):
-    #TODO: Needs to be tested
+def custom_collate_fn(batch):
+    
     batch_expanded_dims = [np.expand_dims(x_sample, axis=1) for x_sample, _ in batch]
     inputs_mbatch_tensor = torch.from_numpy(np.concatenate(batch_expanded_dims, axis=1))
     lengths_ = [x_sample[1] for x_sample in batch]
     lengths_mbatch_tensor = torch.FloatTensor(lengths_)
     return (inputs_mbatch_tensor, lengths_mbatch_tensor)
 
-def get_dataloader(dataset, batch_size, tr_indices, val_indices, test_indices=None):
-    #TODO: Needs to be tested
-    custom_loader = DataLoader(dataset,
-                            batch_size=batch_size,
-                            sampler=torch.utils.data.SubsetRandomSampler(tr_indices),
-                            num_workers=0,
-                            collate_fn=my_collate_fn)
+def get_dataloader(dataset, batch_size, my_collate_fn, indices=None):
+
+    if indices is None:
+        custom_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                num_workers=0,
+                                collate_fn=my_collate_fn)
+    else:
+        custom_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                sampler=torch.utils.data.SubsetRandomSampler(indices),
+                                num_workers=0,
+                                collate_fn=my_collate_fn)
 
     return custom_loader
     
