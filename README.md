@@ -3,12 +3,9 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
-- [x] Integrate toeplitz matrix for the neural network class that returns s and mu (Aleix).
-- [x] Push the NVP that Aleix wrote and put everything in a folder callled info (Aleix).
-- [ ] Folder data structure (Anubhab)
+- [ ] Integrate toeplitz matrix without using pytorch 1.9 (Aleix and Anubhab).
 - [ ] The dataloader and data utils for the Timit dataset (Anubhab)
-- [x] Adapt the ESN to work in batches (Aleix)
-- [x] Design the biggest Normalizing Flow class
+- [ ] Add batch normalization to the net
 
 ## System requirements
 - Python 3
