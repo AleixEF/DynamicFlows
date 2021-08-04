@@ -17,11 +17,16 @@ class EchoStateNetwork(object):
         self.frame_dim = frame_dim
         self.esn_dim = esn_dim
         
-        # init with esn_dim zeros, but the final shape will be (batch size, esn_dim)
-        self.h_esn = torch.zeros(esn_dim, dtype=torch.float64)
+        # We need to know batch_size (a data property), to initialize it
+        self.h_esn = None
         
         self.Wfb = build_Wfb(esn_dim, frame_dim, spectr_rad)
         self.Wres = build_reservoir(esn_dim, conn_per_neur, spectr_rad)
+    
+    def init_hidden_state(self, batch_size):
+        self.h_esn = torch.zeros((batch_size, self.esn_dim), 
+                                 dtype=torch.float64)
+        return self.h_esn
         
     def next_hidden_state(self, x_frame):
         # x_frame has shape (batch_size, frame_dim)
@@ -29,10 +34,6 @@ class EchoStateNetwork(object):
         self.h_esn = torch.tanh(
             self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
         return self.h_esn
-    
-    def reset_hidden_state(self):
-        self.h_esn = torch.zeros(self.esn_dim, dtype=torch.float64)
-        return
     
     
 def build_reservoir(esn_dim, conn_per_neur, spec_rad):

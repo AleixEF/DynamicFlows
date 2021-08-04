@@ -31,8 +31,8 @@ Problems encountered:
 """
 
 
-def train(nf_model, esn_model, batch, optimizer):
-    loglike = nf_model.loglike_sequence(batch, esn_model)
+def train(nf_model, esn_model, batch, optimizer, seq_lengths):
+    loglike = nf_model.loglike_sequence(batch, esn_model, seq_lengths)
     loss = -loglike.sum()
     
     optimizer.zero_grad()
@@ -54,7 +54,7 @@ batch_size = 64
 max_seq_length = 5
 frame_dim = 10 
 learning_rate = 1e-5
-
+seq_lengths = max_seq_length * torch.ones(batch_size)
 
 hidden_layer_dim = 15
 
@@ -80,8 +80,8 @@ for iteration in range(num_training_batches):
                                            size=(max_seq_length, batch_size))
     batch1 = torch.from_numpy(batch1)
     
-    loss0 = train(nf0, esn_model, batch0, optimizer0)
-    loss1 = train(nf1, esn_model, batch1, optimizer1)
+    loss0 = train(nf0, esn_model, batch0, optimizer0, seq_lengths)
+    loss1 = train(nf1, esn_model, batch1, optimizer1, seq_lengths)
     
     if iteration % 100 == 0:
         print("loss0", loss0.item())

@@ -32,31 +32,29 @@ class NormalizingFlow(nn.Module):
             for _ in range(self.num_flow_layers)]
         )
     
-    def loglike_sequence(self, x_sequence, esn, seq_lengths=None, 
-                         reset_esn=True):
+    def loglike_sequence(self, x_sequence, esn_object, seq_lengths=None, 
+                         init_hidden_state=True): 
+                         
         # those sequences in the batch that do not reach max_seq_length have
         # been padded with zeros
         max_seq_length, batch_size, frame_dim = x_sequence.shape
         loglike_seq = 0
         
-        # at t=0 there is no encoding, so h=0
-        h_esn = torch.zeros((batch_size, esn.esn_dim), dtype=torch.float64)
+        # if reset_hidden_state is True, we fill it with zeros
+        if init_hidden_state:
+            esn_object.init_hidden_state(batch_size)
         
         for frame_instant, x_frame in enumerate(x_sequence):
             # loglike frame has shape (batch_size, 1)
-            loglike_frame = self.loglike_frame(x_frame, h_esn) 
+            loglike_frame = self.loglike_frame(x_frame, esn_object.h_esn) 
             
             length_mask = f_utils.create_length_mask(frame_instant, batch_size, 
                                                      seq_lengths)
             loglike_seq += loglike_frame * length_mask 
             
             # preparing the encoding for the next iteration
-            h_esn = esn.next_hidden_state(x_frame)
-        
-        if reset_esn:
-            esn.reset_hidden_state()
-        # once we have finished the encoding, we set to 0 the esn state,
-        # such that we can encode again a new sequence in the next call
+            esn_object.next_hidden_state(x_frame)
+            
         return loglike_seq
 
     def loglike_frame(self, x_frame, h_esn):
