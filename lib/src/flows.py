@@ -40,7 +40,7 @@ class NormalizingFlow(nn.Module):
         max_seq_length, batch_size, frame_dim = x_sequence.shape
         loglike_seq = 0
         
-        # if reset_hidden_state is True, we fill it with zeros
+        # if init_hidden_state is True, we fill it with zeros
         if init_hidden_state:
             esn_object.init_hidden_state(batch_size)
         
