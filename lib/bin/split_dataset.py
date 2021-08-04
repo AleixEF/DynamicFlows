@@ -1,12 +1,13 @@
-from parse import parse
+#from parse import parse
 import sys
-import argparse
+#import argparse
 import os
 import pickle as pkl
-from utils.data_utils import read_classmap,to_phoneme_level,flip, phn61_to_phn39,\
+from ..utils.data_utils import read_classmap,to_phoneme_level,flip, phn61_to_phn39,\
     remove_label, getsubset, normalize
-from functools import partial
+#from functools import partial
 
+"""
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Split a dataset according to an existing class map.")
     parser.add_argument('-input', metavar="<Input dataset to split>", type=str)
@@ -56,3 +57,4 @@ if __name__ == "__main__":
 
     
     sys.exit(0)
+"""

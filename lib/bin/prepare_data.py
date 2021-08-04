@@ -3,9 +3,9 @@ import numpy as np
 import pickle as pkl
 import os
 from functools import partial
-from parse import parse
-import json
-from utils.data_utils import read_classmap,write_classmap,flip,\
+#from parse import parse
+#import json
+from ..utils.data_utils import read_classmap,write_classmap,flip,\
     phn61_to_phn39, remove_label, to_phoneme_level, getsubset, normalize
 
 def get_phoneme_mapping(iphn, phn2int, n_taken=0):
