@@ -13,12 +13,18 @@ from . import net
 from ..utils import flow_layer_utils as f_utils 
 
 
+
 class NormalizingFlow(nn.Module):
-    def __init__(self, frame_dim, hidden_layer_dim, b_mask, num_flow_layers=2,  
-                 esn_dim=500, num_hidden_layers=1, toeplitz=True):                  
+    def __init__(self, frame_dim, hidden_layer_dim, esn_dim=500, b_mask=None,   
+                 num_flow_layers=2, num_hidden_layers=1, toeplitz=True):                  
         
         super(NormalizingFlow, self).__init__()
-        self.b_mask = b_mask # shape (1, frame_dim)
+        
+        if b_mask is None:
+            self.b_mask = f_utils.create_b_mask(frame_dim)
+        else:
+            self.b_mask = b_mask # shape (1, frame_dim)
+            
         self.num_flow_layers = num_flow_layers
         self.flow_layers = nn.ModuleList(
             [FlowLayer(frame_dim, esn_dim, hidden_layer_dim, num_hidden_layers, 
@@ -26,7 +32,8 @@ class NormalizingFlow(nn.Module):
             for _ in range(self.num_flow_layers)]
         )
     
-    def loglike_sequence(self, x_sequence, esn, seq_lengths=None):
+    def loglike_sequence(self, x_sequence, esn, seq_lengths=None, 
+                         reset_esn=True):
         # those sequences in the batch that do not reach max_seq_length have
         # been padded with zeros
         max_seq_length, batch_size, frame_dim = x_sequence.shape
@@ -46,9 +53,10 @@ class NormalizingFlow(nn.Module):
             # preparing the encoding for the next iteration
             h_esn = esn.next_hidden_state(x_frame)
         
+        if reset_esn:
+            esn.reset_hidden_state()
         # once we have finished the encoding, we set to 0 the esn state,
         # such that we can encode again a new sequence in the next call
-        esn.reset_hidden_state()
         return loglike_seq
 
     def loglike_frame(self, x_frame, h_esn):
