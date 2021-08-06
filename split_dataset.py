@@ -1,18 +1,19 @@
-#from parse import parse
+from parse import parse
 import sys
-#import argparse
+import argparse
 import os
 import pickle as pkl
 from lib.utils.data_utils import read_classmap,to_phoneme_level,flip, phn61_to_phn39,\
     remove_label, getsubset, normalize
-#from functools import partial
+from functools import partial
 
-"""
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Split a dataset according to an existing class map.")
-    parser.add_argument('-input', metavar="<Input dataset to split>", type=str)
-    parser.add_argument('-classmap', metavar="<class_map.json file>", type=str)
-    parser.add_argument('-totclass', metavar="<Total number of classes>", type=int)
+
+    parser = argparse.ArgumentParser(description="Split a test dataset according to an existing class map, \
+                                        assuming the training set having name train.<nfeats>.pkl is already present")
+    parser.add_argument('-input', metavar="<Input dataset to split (of the format test.<nfeats>.<noisetype>.pkl)>", type=str)
+    parser.add_argument('-classmap', metavar="<Full path to the class_map.json file>", type=str)
+    parser.add_argument('-total_num_classes', metavar="<Total number of classes (39 or 61)>", type=int)
     args = parser.parse_args()
 
     fname_dtest = args.input
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     data_te, label_te = to_phoneme_level(te_DATA)
     data_tr, label_tr = to_phoneme_level(tr_DATA)
     phn2int = phn2int_61
-    if args.totclass == 39:
+    if args.total_num_classes == 39:
         f = partial(phn61_to_phn39, int2phn_61=flip(phn2int_61), data_folder=os.path.dirname(fname_dtest))
         label_tr, phn2int_39 = f(label_tr)
         label_te, _ = f(label_te, phn2int_39=phn2int_39)
@@ -54,7 +55,5 @@ if __name__ == "__main__":
         assert (not os.path.isfile(test_outfiles[i]))
         xtest_c = xtest[ytest == ic]
         pkl.dump(xtest_c, open(test_outfiles[i], "wb"))
-
-    
+ 
     sys.exit(0)
-"""

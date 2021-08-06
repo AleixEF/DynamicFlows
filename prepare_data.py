@@ -4,10 +4,10 @@ import pickle as pkl
 import os
 from functools import partial
 from parse import parse
-import json
-from lib.utils.data_utils import read_classmap,write_classmap,flip,\
+from lib.utils.data_utils import read_classmap, write_classmap, flip,\
     phn61_to_phn39, remove_label, to_phoneme_level, getsubset, normalize
-'''
+import argparse
+
 def get_phoneme_mapping(iphn, phn2int, n_taken=0):
     """
     This function takes an array of ints 'iphn' and a mapping dictionary 'phn2int' 
@@ -116,23 +116,34 @@ if __name__ == "__main__":
             "Usage: python bin/prepare_data.py \"[nclasses]/[totclasses (61|39)]\" [training data] [testing data]\n"\
             "Example: python bin/prepare_data.py 2/61 data/train13.pkl data/test13.pkl"
 
-    if len(sys.argv) != 4 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
-        print(usage)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Input arguments for splitting a given dataset (.pkl) into individual .pkl files")
+    parser.add_argument("--class_frac", help="Enter as a string: num_classes/tot_num_classes", type=str)
+    parser.add_argument("--training_data", help="Enter the full path to the training data file", type=str)
+    parser.add_argument("--testing_data", help="Enter the full path to the testing data file", type=str)
 
-    nclasses, totclasses = parse("{:d}/{:d}", sys.argv[1])
-    train_inputfile = sys.argv[2]
-    test_inputfile = sys.argv[3]
+    args = parser.parse_args() 
+    
+    nclasses, totclasses = parse("{:d}/{:d}", args.class_frac)
+    train_inputfile = args.training_data
+    test_inputfile = args.testing_data
+    
+    #if len(sys.argv) != 4 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
+    #    print(usage)
+    #    sys.exit(1)
+
+    #nclasses, totclasses = parse("{:d}/{:d}", sys.argv[1])
+    #train_inputfile = sys.argv[2]
+    #test_inputfile = sys.argv[3]
 
     train_outfiles = [train_inputfile.replace(".pkl", "_" + str(i+1) + ".pkl") for i in range(nclasses)]
     test_outfiles = [test_inputfile.replace(".pkl", "_" + str(i+1) + ".pkl") for i in range(nclasses)]
     data_folder = os.path.dirname(test_inputfile)
-    print(train_outfiles)
-    print(test_outfiles)
+    #print(train_outfiles)
+    #print(test_outfiles)
 
     classmap = read_classmap(data_folder)
     n_existing = len(classmap)
-    print(classmap)
+    #print(classmap)
 
     if totclasses != 39 and totclasses != 61:
         print("(error)", "first argument must be [nclasses]/[61 or 39]", file=sys.stderr)
@@ -182,5 +193,3 @@ if __name__ == "__main__":
     write_classmap(classmap, os.path.dirname(test_inputfile))
 
     sys.exit(0)
-
-'''
