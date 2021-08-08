@@ -33,8 +33,7 @@ class LinearToeplitz(nn.Module):
     def forward(self, x_input):
         weight = create_toeplitz_matrix(self.toeplitz_params, 
                                        (self.output_features, 
-                                        self.input_features))                                    
-        #return x_input @ weight.T + self.bias
+                                        self.input_features))                                   
         return LinearFunction.apply(x_input, weight, self.bias)
 
     def extra_repr(self):
