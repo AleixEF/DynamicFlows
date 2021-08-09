@@ -33,7 +33,7 @@ Problems encountered:
 
 def train(nf_model, esn_model, batch, optimizer, seq_lengths):
     loglike = nf_model.loglike_sequence(batch, esn_model, seq_lengths)
-    loss = -loglike.sum()
+    loss = -loglike.sum() / loglike.shape[0]
     
     optimizer.zero_grad()
     loss.backward()
@@ -53,7 +53,7 @@ num_training_batches = 1000
 batch_size = 64
 max_seq_length = 5
 frame_dim = 10 
-learning_rate = 1e-5
+learning_rate = 1e-3
 seq_lengths = max_seq_length * torch.ones(batch_size)
 
 hidden_layer_dim = 15
