@@ -23,23 +23,21 @@ def train(nf_model, esn_model, batch, optimizer):
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    print(torch.max(nf_model.flow_layers[0].nn.combined2hidden[0].toeplitz_params))
-    print(torch.max(nf_model.flow_layers[0].nn.hidden2slope[0].weight))
-    print()
     return loss
 
 
-num_training_batches = 10
-batch_size = 1
+num_training_batches = 1000
+batch_size = 64
 max_seq_length = 5
-frame_dim = 2
+frame_dim = 40
 learning_rate = 0.001
 
 hidden_layer_dim = 15
 
 esn_model = esn.EchoStateNetwork(frame_dim)
 
-nf = flows_with_weightnorm.NormalizingFlow(frame_dim, hidden_layer_dim, num_flow_layers=1)
+nf = flows_with_weightnorm.NormalizingFlow(frame_dim, hidden_layer_dim, 
+                                           num_flow_layers=1)
 nf.double()
 optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 
@@ -51,5 +49,5 @@ for iteration in range(num_training_batches):
 
     loss = train(nf, esn_model, batch, optimizer)
 
-    #if iteration % 100 == 0:
-        #print("loss", loss.item())
+    if iteration % 100 == 0:
+        print("loss", loss.item())
