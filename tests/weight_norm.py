@@ -1,7 +1,7 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Aug  2 14:45:37 2021
+Created on Mon Aug  9 17:04:17 2021
 
 @author: aleix
 """
@@ -9,11 +9,9 @@ Created on Mon Aug  2 14:45:37 2021
 import numpy as np
 import torch
 
-from context import flows, esn
+from context import flows_with_weightnorm, esn
 
 """
-Here we run a very small flow model and we see that the toeplitz params
-explode
 
 """
 
@@ -35,13 +33,13 @@ num_training_batches = 10
 batch_size = 1
 max_seq_length = 5
 frame_dim = 2
-learning_rate = 1
+learning_rate = 0.001
 
 hidden_layer_dim = 15
 
 esn_model = esn.EchoStateNetwork(frame_dim)
 
-nf = flows.NormalizingFlow(frame_dim, hidden_layer_dim, num_flow_layers=1)
+nf = flows_with_weightnorm.NormalizingFlow(frame_dim, hidden_layer_dim, num_flow_layers=1)
 nf.double()
 optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 
