@@ -40,7 +40,7 @@ corresponding true sequence length
 """
 def create_length_mask(frame_instant, batch_size, true_lengths):
     if true_lengths is None:
-        length_mask = torch.ones((batch_size, 1), dtype=torch.float64)
+        length_mask = torch.ones((batch_size, 1))
     else:
         # frame instant +1 gives the number of frames visited (0 indexing)  
         length_mask = 1 * (true_lengths >= (frame_instant+1)) 
@@ -56,7 +56,7 @@ multiplying by this mask gives the first half dimensions unmodified
 """
 
 def create_b_mask(frame_dim):
-    b_mask = torch.ones((1, frame_dim), dtype=torch.float64)
+    b_mask = torch.ones((1, frame_dim))
     b_mask[0, frame_dim//2:] = 0
     return b_mask
 

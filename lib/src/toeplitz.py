@@ -6,9 +6,8 @@ Created on Sun Aug  8 18:07:12 2021
 @author: aleix
 """
 
-
 import torch
-from torch import nn 
+from torch import nn
 from torch.autograd import Function
 import math
 
@@ -20,20 +19,19 @@ class LinearToeplitz(nn.Module):
         self.output_features = output_features
 
         # a toeplitz matrix has n_rows + n_cols -1 independent params
-        self.toeplitz_params =  nn.Parameter(
-            torch.empty((output_features+input_features-1)))
-        self.bias = nn.Parameter(torch.empty((output_features)))
-        
+        self.toeplitz_params = nn.Parameter(
+            torch.empty((output_features + input_features - 1)))
+        self.bias = nn.Parameter(torch.empty(output_features))
+
         # same init as nn.Linear
         k = math.sqrt(1 / input_features)
-        self.toeplitz_params.data.uniform_(-k, k)  
-        self.bias.data.uniform_(-k, k)        
-        
+        self.toeplitz_params.data.uniform_(-k, k)
+        self.bias.data.uniform_(-k, k)
 
     def forward(self, x_input):
-        weight = create_toeplitz_matrix(self.toeplitz_params, 
-                                       (self.output_features, 
-                                        self.input_features))                                   
+        weight = create_toeplitz_matrix(self.toeplitz_params,
+                                        (self.output_features,
+                                         self.input_features))
         return LinearFunction.apply(x_input, weight, self.bias)
 
     def extra_repr(self):
@@ -81,10 +79,10 @@ class LinearFunction(Function):
         return grad_input, grad_weight, grad_bias
 
 
-def create_toeplitz_matrix(parameters, matrix_shape):             
-    toep_matrix = torch.zeros(matrix_shape, dtype=torch.float64)
-    i_start = matrix_shape[0] 
-    i_end = i_start + matrix_shape[1] 
+def create_toeplitz_matrix(parameters, matrix_shape):
+    toep_matrix = torch.zeros(matrix_shape)
+    i_start = matrix_shape[0]
+    i_end = i_start + matrix_shape[1]
     for i in range(matrix_shape[0]):
         i_start -= 1
         i_end -= 1

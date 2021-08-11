@@ -53,7 +53,3 @@ class NeuralNetwork(nn.Module):
         slope = self.hidden2slope(q_hidden)
         intercept = self.hidden2intercept(q_hidden)
         return slope, intercept
-    
-    
-
-    

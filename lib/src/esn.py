@@ -24,8 +24,8 @@ class EchoStateNetwork(object):
         self.Wres = build_reservoir(esn_dim, conn_per_neur, spectr_rad)
     
     def init_hidden_state(self, batch_size):
-        self.h_esn = torch.zeros((batch_size, self.esn_dim), 
-                                 dtype=torch.float64)
+        self.h_esn = torch.zeros((batch_size, self.esn_dim))
+
         return self.h_esn
         
     def next_hidden_state(self, x_frame):
@@ -46,7 +46,7 @@ def build_reservoir(esn_dim, conn_per_neur, spec_rad):
             Wres[row, col] = np.random.normal()
     Wres = change_spectral_radius(Wres, spec_rad)
     Wres = torch.from_numpy(Wres)
-    return Wres
+    return Wres.float() # we will work with torch floats (numpy uses double)
 
 
 def build_Wfb(esn_dim, frame_dim, spec_rad):
@@ -55,7 +55,7 @@ def build_Wfb(esn_dim, frame_dim, spec_rad):
     Wfb = Wfb * (np.sqrt(spec_rad) / np.max(S))
     # now the max eigenv of Wfb*(Wfb)T is equal to spec_rad 
     Wfb = torch.from_numpy(Wfb)
-    return Wfb
+    return Wfb.float()
     
 
 def change_spectral_radius(Wres, new_radius):
