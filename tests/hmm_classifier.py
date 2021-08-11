@@ -46,28 +46,38 @@ def main():
 
     # training
     for update_idx in range(n_updates):
+
+        #tr_loss_running = 0.0
         model_category = 0
+        
         for nf, optim, data_gen in zip(flow_models, optimizers, data_gens):
             sequence_batch = data_gen.sample_sequences(seq_length, batch_size)
             sequence_batch = torch.from_numpy(sequence_batch).float()
 
             loss = train(nf, esn_model, optim, sequence_batch)
-
+            
             if update_idx % 10 == 0:
-                print("loss for model ", model_category, ":", loss)
+                print("Update no. {}, loss for model {}: {}".format(update_idx, 
+                                                                model_category, 
+                                                                loss.item()))
+                
                 model_category += 1
 
     # testing
     n_test_sequences = 100
     true_categories = np.random.randint(low=0, high=n_categories, size=n_test_sequences)
     predictions = np.zeros(n_test_sequences, dtype=np.int32)  # to fill
-    for i, true_cat in enumerate(true_categories):
-        single_sequence = data_gens[true_cat].sample_sequences(seq_length, n_sequences=1)
-        single_sequence = torch.from_numpy(single_sequence).float()
-        predictions[i] = predict(flow_models, esn_model, single_sequence)
 
-    print(classification_report(true_categories, predictions))
-    return
+    with torch.no_grad():
+        for i, true_cat in enumerate(true_categories):
+
+            single_sequence = data_gens[true_cat].sample_sequences(seq_length, n_sequences=1)
+            single_sequence = torch.from_numpy(single_sequence).float()
+            predictions[i] = predict(flow_models, esn_model, single_sequence)
+
+        print(classification_report(true_categories, predictions))
+    
+    return None
 
 
 if __name__ == '__main__':
