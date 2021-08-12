@@ -44,7 +44,9 @@ def main():
     # one hmm per category to generate sequences
     data_gens = [hmm.GaussianHmm(frame_dim) for _ in range(n_categories)]
 
-    # training
+    for nf in flow_models:
+        nf.train()
+
     for update_idx in range(n_updates):
         model_category = 0
         for nf, optim, data_gen in zip(flow_models, optimizers, data_gens):
@@ -57,7 +59,9 @@ def main():
                 print("loss for model ", model_category, ":", loss)
                 model_category += 1
 
-    # testing
+    for nf in flow_models:
+        nf.eval()
+
     n_test_sequences = 100
     true_categories = np.random.randint(low=0, high=n_categories, size=n_test_sequences)
     predictions = np.zeros(n_test_sequences, dtype=np.int32)  # to fill
