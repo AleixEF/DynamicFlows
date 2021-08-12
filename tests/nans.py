@@ -20,7 +20,7 @@ explode
 
 def train(nf_model, esn_model, batch, optimizer):
     loglike = nf_model.loglike_sequence(batch, esn_model)
-    loss = -loglike.sum() / loglike.shape[0]
+    loss = -torch.mean((loglike))
 
     optimizer.zero_grad()
     loss.backward()
@@ -35,23 +35,23 @@ num_training_batches = 10
 batch_size = 1
 max_seq_length = 5
 frame_dim = 2
-learning_rate = 1
+learning_rate = 1e-3
 
 hidden_layer_dim = 15
 
 esn_model = esn.EchoStateNetwork(frame_dim)
 
 nf = flows.NormalizingFlow(frame_dim, hidden_layer_dim, num_flow_layers=1)
-nf.double()
+
 optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 
 for iteration in range(num_training_batches):
     batch = np.random.multivariate_normal(mean=np.zeros(frame_dim),
                                           cov=np.identity(frame_dim),
                                           size=(max_seq_length, batch_size))
-    batch = torch.from_numpy(batch)
+    batch = torch.from_numpy(batch).float()
 
     loss = train(nf, esn_model, batch, optimizer)
 
-    #if iteration % 100 == 0:
-        #print("loss", loss.item())
+    if iteration % 100 == 0:
+        print("loss", loss.item())
