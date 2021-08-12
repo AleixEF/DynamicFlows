@@ -19,8 +19,7 @@ def predict(models_list, esn_model, single_sequence):
     n_categories = len(models_list)
     likelihoods = torch.zeros(n_categories)
     for cat in range(n_categories):
-        with torch.no_grad():
-            likelihoods[cat] = models_list[cat].loglike_sequence(single_sequence, esn_model)
+        likelihoods[cat] = models_list[cat].loglike_sequence(single_sequence, esn_model)
     return torch.argmax(likelihoods)
 
 
@@ -49,20 +48,19 @@ def main():
 
     for update_idx in range(n_updates):
 
-        #tr_loss_running = 0.0
+        # tr_loss_running = 0.0
         model_category = 0
-        
+
         for nf, optim, data_gen in zip(flow_models, optimizers, data_gens):
             sequence_batch = data_gen.sample_sequences(seq_length, batch_size)
             sequence_batch = torch.from_numpy(sequence_batch).float()
 
             loss = train(nf, esn_model, optim, sequence_batch)
-            
+
             if update_idx % 10 == 0:
-                print("Update no. {}, loss for model {}: {}".format(update_idx, 
-                                                                model_category, 
-                                                                loss.item()))
-                
+                print("Update no. {}, loss for model {}: {}".format(update_idx,
+                                                                    model_category,
+                                                                    loss.item()))
                 model_category += 1
 
     for nf in flow_models:
@@ -74,13 +72,12 @@ def main():
 
     with torch.no_grad():
         for i, true_cat in enumerate(true_categories):
-
             single_sequence = data_gens[true_cat].sample_sequences(seq_length, n_sequences=1)
             single_sequence = torch.from_numpy(single_sequence).float()
             predictions[i] = predict(flow_models, esn_model, single_sequence)
 
         print(classification_report(true_categories, predictions))
-    
+
     return None
 
 
