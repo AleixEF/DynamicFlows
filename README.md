@@ -3,13 +3,13 @@
 This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
 
 List of tasks:
-- [ ] Integrate toeplitz matrix without using pytorch 1.9 (Aleix and Anubhab).
-- [ ] The dataloader and data utils for the Timit dataset (Anubhab)
-- [ ] Add batch normalization to the net
+- [x] Integrate toeplitz matrix without using pytorch 1.9 (Aleix and Anubhab).
+- [x] The dataloader and data utils for the Timit dataset (Anubhab)
+- [x] Add batch normalization to the net (we will just use a low learning rate)
 
 ## System requirements
 - Python 3
-- Pytorch 1.9+ (We need the parametrize functionality that is only available in pytorch 1.9+)
+- Pytorch 1.x (We need the parametrize functionality that is only available in pytorch 1.9+)
 
 ## Code Requirements
 - The code must be general enough such that it is easy to add more than 2 normalizing flow layers.
