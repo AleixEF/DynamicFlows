@@ -45,7 +45,17 @@ class GaussianHmm(object):
             cov = self.cov_emissions[h_state]
             frame[idx_seq] = np.random.multivariate_normal(mean, cov)
         return frame
-
+    
+    def emission_expected_value(self, frame_instant):
+        prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
+            self.a_trans, frame_instant)  # array of shape n_states
+        # expected value = sum_{i=1}^N {\mu_i * P(S_t=i)}
+        # \mu_i is the gauss mean of size frame_dim and N is the num of states
+        expected_value = np.sum(
+            self.mean_emissions * prob_state_t.reshape(self.n_states, 1), 
+            axis=0)
+        return expected_value
+        
 
 def init_transition_matrices(n_states):
     dirichlet_params = np.random.uniform(size=n_states)
