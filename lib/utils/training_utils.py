@@ -3,6 +3,20 @@ import os
 from parse import parse
 import datetime
 import torch
+from torch import nn
+import sys
+from collections import deque
+
+class ConvgMonitor(nn.Module):
+
+    def __init__(self, history=None, iter=0, verbose=True):
+        super(ConvgMonitor, self).__init__()
+        self.history = history
+        self.iter = iter
+        self.verbose = verbose
+
+    def report(self, logprob):
+       return None
 
 def step_learning_rate_decay(init_lr, global_step, minimum,
                              anneal_rate=0.98,
@@ -20,7 +34,6 @@ def get_freer_gpu():
 def create_file_paths(filepath, main_exp_name):
     
     full_path_folder = os.path.join(filepath, main_exp_name)
-    
     return full_path_folder
 
 def check_if_dir_or_file_exists(file_path, file_name=None):
@@ -78,11 +91,6 @@ def create_log_and_model_folders(class_index, num_classes, logfile_path="log", m
         print("Creating {}".format(full_modelfile_path))
         os.makedirs(full_modelfile_path, exist_ok=True)
         
-    return None
-    
-def save_model(model, filepath):
-    
-    torch.save(model.state_dict(), filepath)
     return None
 
 def push_model(nets, device='cpu'):
