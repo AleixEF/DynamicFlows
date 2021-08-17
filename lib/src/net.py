@@ -16,6 +16,17 @@ from .toeplitz import LinearToeplitz
 class NeuralNetwork(nn.Module):
     def __init__(self, frame_dim, esn_dim, 
                  hidden_dim, num_hidden_layers, toeplitz):
+        """ The neural network receives two arrays, an x_data array and an h_esn array. The input layer is
+        the concatenation of both of them. So the input layer has frame_dim + esn_dim neurons. The net has the following
+        layer structure; combined, hidden, ..., output. Each hidden layer is set to have the same number of neurons.
+
+        Args:
+            frame_dim: The last dimension of the first input array in the forward method.
+            esn_dim: The last dimension of the second input array in the forward.
+            hidden_dim: The dimension of the hidden layer. All hidden layers will have this dimension by default.
+            num_hidden_layers: How many hidden layers the net has.
+            toeplitz: If True, the weights of the combined to hidden layer have a toeplitz matrix form.
+        """
         
         super(NeuralNetwork, self).__init__()
         if toeplitz:
