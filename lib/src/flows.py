@@ -28,7 +28,8 @@ class NormalizingFlow(nn.Module):
             num_flow_layers: Each layer applies 2 transformations, one with b_mask and another one with 1-b_mask.
             num_hidden_layers: How many hidden layers the neural network should have. All layers will have the same
             dimension, which is hidden layer_dim
-            toeplitz:
+            toeplitz: If True, the weight matrix of input-hidden layer of the net will be a toeplitz matrix
+
         """
         
         super(NormalizingFlow, self).__init__()
