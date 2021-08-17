@@ -1,0 +1,22 @@
+{
+    "train":
+    {
+        "n_epochs": 60,
+        "batch_size": 128,
+        "eval_batch_size": 128,
+        "tr_to_val_split":0.8
+    },
+
+    "dyn_esn_flow":
+    {
+        "frame_dim":40, 
+        "esn_dim":500, 
+        "conn_per_neuron":10, 
+        "spectral_radius":0.8, 
+        "hidden_layer_dim":15, 
+        "n_flow_layers":4, 
+        "num_hidden_layers":1,
+        "learning_rate":0.8, 
+        "use_toeplitz":true
+    }
+}
