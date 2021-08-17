@@ -35,7 +35,7 @@ class DynESN_flow(nn.Module):
                                             conn_per_neur=conn_per_neuron, 
                                             spectr_rad=spectral_radius)
 
-        self.flow_models = [flows.NormalizingFlow(frame_dim, 
+        self.flow_model = flows.NormalizingFlow(frame_dim, 
                                                 hidden_layer_dim, 
                                                 num_flow_layers=n_flow_layers,
                                                 esn_dim=esn_dim, 
@@ -43,7 +43,16 @@ class DynESN_flow(nn.Module):
                                                 num_hidden_layers=num_hidden_layers, 
                                                 toeplitz=use_toeplitz
                                                 )
-                   for _ in range(self.num_categories)]  # one model per category
+
+        #self.flow_models = [flows.NormalizingFlow(frame_dim, 
+        #                                        hidden_layer_dim, 
+        #                                        num_flow_layers=n_flow_layers,
+        #                                        esn_dim=esn_dim, 
+        #                                        b_mask=None,  # Not sure where to put this part  
+        #                                        num_hidden_layers=num_hidden_layers, 
+        #                                        toeplitz=use_toeplitz
+        #                                        )
+        #           for _ in range(self.num_categories)]  # one model per category
 
     def set_models_train(self):
         for nf in self.flow_models:
@@ -76,36 +85,24 @@ class DynESN_flow(nn.Module):
         #return torch.argmax(likelihoods)  
         return None
 
-    def train(self, n_epochs, x):
+    def train(self, n_epochs, trainloader):
 
         #TODO: Needs to be completed
-        self.optimizers = [torch.optim.SGD(nf.parameters(), lr=self.learning_rate) for nf in 
-                        self.flow_models]
+        self.optimizer = torch.optim.SGD(self.flow_model.parameters(), lr=self.learning_rate)
 
-        self.schedulers = [scheduler.StepLR(optimizer=optimizer_i, step_size=n_epochs//3, gamma=0.9) for optimizer_i in self.optimizers]
-
-        # Check whether the numner of optimizers is equal to the number of flow models
-        assert len(self.optimizers) == len(self.flow_models), "All optimizers have not been declared for corresponding flow_models" 
-
-        # Check whether the number of schedulers is equal to the number of optimizers
-        assert len(self.optimizers) == len(self.schedulers) 
+        self.scheduler = scheduler.StepLR(optimizer=self.optimizer, step_size=n_epochs//3, gamma=0.9)
 
         for epoch_idx in range(n_epochs):
 
-            # tr_loss_running = 0.0
-            model_category = 0
-
-            for nf, optim, lr_scheduler in zip(self.flow_models, self.optimizers, self.schedulers):
+            for i, tr_data_batch in enumerate(trainloader):
                 #sequence_batch = data_gen.sample_sequences(seq_length, batch_size)
                 #sequence_batch = torch.from_numpy(sequence_batch).float()
-                sequence_batch = torch.from_numpy(x).float()
-                loss = self.train_sequences(nf, self.esn_model, optim, scheduler, sequence_batch)
+                sequence_batch = torch.from_numpy(tr_data_batch).float()
+                loss = self.train_sequences(self.flow_model, self.esn_model, self.optimizer, self.scheduler, sequence_batch)
 
                 if epoch_idx % 10 == 0:
-                    print("Update no. {}, loss for model {}: {}".format(epoch_idx,
-                                                                        model_category,
-                                                                        loss.item()))
-                    model_category += 1
+                    print("Update no. {}, loss for model: {}".format(epoch_idx,
+                                                                    loss.item()))
         
         return None
 
