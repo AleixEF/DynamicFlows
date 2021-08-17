@@ -18,13 +18,42 @@ class ConvgMonitor(nn.Module):
     def report(self, logprob):
        return None
 
-def step_learning_rate_decay(init_lr, global_step, minimum,
-                             anneal_rate=0.98,
-                             anneal_interval=1):
-    rate = init_lr * anneal_rate ** (global_step // anneal_interval)
-    if rate < minimum:
-        rate = minimum
-    return rate
+def set_model(mdl_file, model_type):
+
+    if model_type == 'gaus':
+        with open(mdl_file, "rb") as handle:
+            mdl = pkl.load(handle)
+        mdl.device = 'cpu'
+        #f = lambda x: accuracy_fun(x, mdl=mdl)
+    elif model_type == 'gen' or model_type == 'glow':
+        mdl = load_model(mdl_file)
+        if torch.cuda.is_available():
+            if not options["Mul_gpu"]:
+                # default case, only one gpu
+                device = torch.device('cuda')
+                mdl.device = device
+                mdl.pushto(mdl.device)   
+            else:
+                for i in range(4):
+                    try:
+                        time.sleep(np.random.randint(10))
+                        device = torch.device('cuda:{}'.format(int(get_freer_gpu()) ))
+                        # print("Try to push to device: {}".format(device))
+                        mdl.device = device
+                        mdl.pushto(mdl.device)   
+                        break
+                    except:
+                        # if push error (maybe memory overflow, try again)
+                        # print("Push to device cuda:{} fail, try again ...")
+                        continue
+        else:
+            mdl.device = 'cpu'
+            mdl.pushto(mdl.device)
+
+        # set model into eval mode
+        mdl.eval()
+
+    return mdl
 
 def get_freer_gpu():
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')

@@ -6,6 +6,25 @@ from torch.utils.data import Dataset, DataLoader
 import sys
 import json
 from functools import partial
+import pickle as pkl
+
+def get_phoneme_type(phn, phonemes_type_dict):
+    for item in phonemes_type_dict.items():
+        if phn in item[1]:
+            return item[0]
+
+def create_phoneme_type_dict():
+
+    # P - Plosives, F - Fricatives, N - Nasals, SV - Semi-Vowels, D - Dipthongs, C - Closures
+    phonemes_type_dict = {'P':['b','d','g','p','t','k','jh','ch'],
+                      'F':['s','sh','z','f','th','v','dh','hh'],
+                      'N':['m','n','ng'],
+                      'SV':['l','r','er','w','y'],
+                      'V':['iy','ih','eh','ae','aa','ah','uh','uw'],
+                      'D':['ey','aw','ay','oy','ow'],
+                      'C':['sil','dx']}
+
+    return phonemes_type_dict
 
 def norm_min_max(x, min_, max_):
     """ This function performs min-max scaling for given input
@@ -233,6 +252,21 @@ class CustomSequenceDataset(Dataset):
         return (self.data[idx], self.lengths[idx])
         #return (self.data[idx], self.mask[idx])
 
+def obtain_tr_val_idx(tr_and_val_dataset, tr_to_val_split=0.8):
+
+    num_train_plus_val_samples = len(tr_and_val_dataset)
+    print("Total number of training + validation set samples: {}".format(num_train_plus_val_samples))
+    print("Training to val split: {}".format(tr_to_val_split))
+
+    num_train_samples = int(tr_to_val_split * num_train_plus_val_samples)
+    num_val_samples = num_train_plus_val_samples - num_train_samples
+    
+    indices = torch.randperm(num_train_plus_val_samples).tolist()
+    tr_indices = indices[:num_train_samples]
+    val_indices = indices[num_train_samples:num_train_samples+num_val_samples]
+
+    return tr_indices, val_indices
+
 def custom_collate_fn(batch):
     
     batch_expanded_dims = [np.expand_dims(x_sample, axis=1) for x_sample, _ in batch]
@@ -256,4 +290,16 @@ def get_dataloader(dataset, batch_size, my_collate_fn, indices=None):
                                 collate_fn=my_collate_fn)
 
     return custom_loader
+
+def load_splits_file(splits_filename):
+
+    with open(splits_filename, 'rb') as handle:
+        splits = pkl.load(handle)
+    return splits
+
+def create_splits_file_name(dataset_filename, splits_filename="tr_to_val_splits_file.pkl", num_classes=39):
     
+    idx_dset_info = dataset_filename.rfind(str(num_classes))
+    idx_splitfilename = splits_filename.rfind(".pkl")
+    splits_filename_modified = splits_filename[:idx_splitfilename] + "_" + dataset_filename[idx_dset_info:] 
+    return splits_filename_modified
