@@ -8,11 +8,9 @@ Created on Sun Jul 25 12:54:23 2021
 
 import torch
 from torch import nn
-
+import math
 from . import net
 from ..utils import flow_layer_utils as f_utils 
-
-
 
 class NormalizingFlow(nn.Module):
     def __init__(self, frame_dim, hidden_layer_dim, esn_dim=500, b_mask=None,   
@@ -51,9 +49,10 @@ class NormalizingFlow(nn.Module):
     
     def loglike_sequence(self, x_sequence, esn_object, seq_lengths=None, 
                          init_hidden_state=True):
-        """Given a batch of sequences x_1, ..., x_T, it calculates the log probability of each one.
-           Not all of the original sequences had the same length. Zero frames were added to the sequences
-           that did not reach max_seq_length in order to reach it.
+        """
+        Given a batch of sequences x_1, ..., x_T, it calculates the log probability of each one.
+        Not all of the original sequences had the same length. Zero frames were added to the sequences
+        that did not reach max_seq_length in order to reach it.
 
         Args:
             x_sequence: 3D array of shape (max_seq_length, batch_size, frame_dim).
@@ -63,28 +62,36 @@ class NormalizingFlow(nn.Module):
 
         Returns:
             loglike_seq: 2D array of shape (batch_size, 1). The log probability of each sequence in the batch
-
-        """
-                         
+        """      
         # those sequences in the batch that do not reach max_seq_length have
         # been padded with zeros
         max_seq_length, batch_size, frame_dim = x_sequence.shape
         loglike_seq = 0
-        
+
         # if init_hidden_state is True, we fill it with zeros
         if init_hidden_state:
             esn_object.init_hidden_state(batch_size)
         
         for frame_instant, x_frame in enumerate(x_sequence):
-            # loglike frame has shape (batch_size, 1)
+            
+            # x_frame has shape (batch_size, frame_dim), h_esn has shape (batch_size, esn_dim),
+            # loglike frame has shape (batch_size, 1) and this function self.loglike_frame 
+            # returns log likelihood at the given frame for each sequence in the mini-batch
             loglike_frame = self.loglike_frame(x_frame, esn_object.h_esn) 
             
+            # Create a binary tensor of size (batch_size) that shows the real length of each sequence in the batch
             length_mask = f_utils.create_length_mask(frame_instant, batch_size, 
                                                      seq_lengths)
-            # not all sequences have the same length, we sum 0 for those whose length has been surpassed
+
+            # This will multiply the given log-liklihood values computed for every frame by a binary mask. Frame 
+            # log-likelihood values are multiplied by zero, if the true sequence length has been exceeded (this is 
+            # figured out using the frame-instant). Results are summed in a variable that should contain the log-likelihood
+            # for the entire sequence
             loglike_seq += loglike_frame * length_mask 
             
-            # preparing the encoding for the next iteration
+            # preparing the encoding for the next iteration, i.e. updating the hidden state using the values in the 
+            # current frame. Incrementally h_esn_{t+1} would reflect the encoding of the sequence upto x_{1:t}. Also,
+            # an important note is that this update happens in parallel across all the frames in a batch
             esn_object.next_hidden_state(x_frame)
             
         return loglike_seq
@@ -99,22 +106,32 @@ class NormalizingFlow(nn.Module):
         Returns: loglike: 2D array of shape (batch_size, 1). The log probability of each frame in the batch
 
         """
-        loglike = 0
-        z_latent = x_frame
+
+        loglike_frame = torch.zeros(x_frame.size(0)) # Since loglike_frame is supposed to be a 2d array of shape (batch_size, 1)
+
+        #z_latent = x_frame # So z_latent now has shape (batch_size, frame_dim)
+
+        z_latent = x_frame.clone() # So z_latent now has shape (batch_size, frame_dim), a recommended way of copy is clone()
+                                   # By deafult, PyTorch does 'call by reference'
+                                        
         for flow_layer in reversed(self.flow_layers):
+
             # the first mask 1-b only modifies the first features of each frame
             z_latent, log_det = flow_layer.f_inverse(z_latent, 1-self.b_mask, h_esn) 
-            loglike += log_det
+            loglike_frame += log_det
             
             # the opposite mask b modifies the other features
             z_latent, log_det = flow_layer.f_inverse(z_latent, self.b_mask, h_esn) 
-            loglike += log_det
+            loglike_frame += log_det
                                                                
         # finally the log of a standard normal distribution
         # given a vector z, this is just -0.5 * zT @ z, but we have a batch
-        loglike += -0.5 * f_utils.row_wise_dot_product(z_latent) 
+        #NOTE: @Aleix, when we take the log of a multi-variate Gaussian distribution,
+        # We also have a constant term to account: 0.5*N*log_{e}(2*pi)
+        loglike_frame += -0.5 * f_utils.row_wise_dot_product(z_latent) - 0.5 * z_latent.size(1) * torch.log(torch.Tensor([2*math.pi]))
+        
         # to keep the shape (batch_size, 1)
-        return loglike
+        return loglike_frame
 
     def g_transform(self, z_latent, h_esn):
         """ Given a latent variable from a multivariate standard normal distribution and an encoding array h_esn of a
@@ -128,7 +145,9 @@ class NormalizingFlow(nn.Module):
         Returns: x_frame: 2D array of shape (batch_size, frame_dim) distributed as a new distribution  P(x_t| x_{1:t-1})
 
         """
-        x_frame = z_latent
+        #x_frame = z_latent
+        x_frame = z_latent.clone() # Again, using torch.clone() for copying tensors
+
         for flow_layer in self.flow_layers:
             # the first transform modifies only the dimensions where b is 0
             x_frame = flow_layer.g_transform(x_frame, self.b_mask, h_esn)
