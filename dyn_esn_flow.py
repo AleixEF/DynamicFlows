@@ -16,6 +16,17 @@ class DynESN_gen_model(nn.Module):
     def sample(self):
         return None
 
+    def predict_sequences(self, models_list):
+
+        #TODO: Need to adapt this in a more general way
+
+        #n_categories = len(models_list)
+        #likelihoods = torch.zeros(n_categories)
+        #for cat in range(n_categories):
+        #    likelihoods[cat] = models_list[cat].loglike_sequence(single_sequence, esn_model)
+        #return torch.argmax(likelihoods)  
+        return None
+
 class DynESN_flow(nn.Module):
 
     def __init__(self, num_categories=39, batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
@@ -73,37 +84,30 @@ class DynESN_flow(nn.Module):
         lr_scheduler.step()
 
         return loss
-    
-    def predict_sequences(self, models_list):
-
-        #TODO: Need to adapt this in a more general way
-
-        #n_categories = len(models_list)
-        #likelihoods = torch.zeros(n_categories)
-        #for cat in range(n_categories):
-        #    likelihoods[cat] = models_list[cat].loglike_sequence(single_sequence, esn_model)
-        #return torch.argmax(likelihoods)  
-        return None
 
     def train(self, n_epochs, trainloader):
 
         #TODO: Needs to be completed
         self.optimizer = torch.optim.SGD(self.flow_model.parameters(), lr=self.learning_rate)
-
-        self.scheduler = scheduler.StepLR(optimizer=self.optimizer, step_size=n_epochs//3, gamma=0.9)
+        self.lr_scheduler = scheduler.StepLR(optimizer=self.optimizer, step_size=n_epochs//3, gamma=0.9)
 
         for epoch_idx in range(n_epochs):
 
             for i, tr_data_batch in enumerate(trainloader):
-                #sequence_batch = data_gen.sample_sequences(seq_length, batch_size)
-                #sequence_batch = torch.from_numpy(sequence_batch).float()
+        
                 sequence_batch = torch.from_numpy(tr_data_batch).float()
-                loss = self.train_sequences(self.flow_model, self.esn_model, self.optimizer, self.scheduler, sequence_batch)
-
+                self.optimizer.zero_grad()
+                loglike = self.flow_model.loglike_sequence(sequence_batch, self.esn_model)
+                loss = -torch.mean(loglike)
+                loss.backward()
+                self.optimizer.step()
+    
                 if epoch_idx % 10 == 0:
                     print("Update no. {}, loss for model: {}".format(epoch_idx,
                                                                     loss.item()))
-        
+
+            self.lr_scheduler.step()
+
         return None
 
     def predict(self):

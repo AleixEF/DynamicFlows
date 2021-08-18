@@ -76,8 +76,8 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
     if splits_file is None or not os.path.isfile(splits_file):
         
         # Get indices to split the training_custom_dataset into training data and validation data
-        train_indices, val_indices = obtain_tr_val_idx(dataset=training_custom_dataset,
-                                                            tr_to_val_split=options["train"]["tr_to_val_split"])
+        train_indices, val_indices = obtain_tr_val_idx(tr_and_val_dataset=training_custom_dataset,
+                                                        tr_to_val_split=options["train"]["tr_to_val_split"])
         
         print(len(train_indices), len(val_indices))
         splits = {}
