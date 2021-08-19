@@ -1,3 +1,4 @@
+from operator import ne
 import torch
 import numpy as np
 from torch.autograd import Variable
@@ -13,9 +14,12 @@ import json
 import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader, load_splits_file
 from lib.utils.data_utils import custom_collate_fn, obtain_tr_val_idx, create_splits_file_name
+from lib.utils.data_utils import NDArrayEncoder
+from dyn_esn_flow import DynESN_flow, train, predict
+from lib.utils.training_utils import create_log_and_model_folders
 import time
 
-def train_model(train_datafile, iclass, classmap, config_file, splits_file, logfile_path = None, modelfile_path = None):
+def train_model(train_datafile, iclass, classmap, config_file, splits_file, logfile_foldername = None, modelfile_foldername = None):
 
     datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
     
@@ -67,6 +71,14 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
     #train_indices, val_indices = obtain_tr_val_idx(dataset=training_custom_dataset,
     #                                                        tr_to_val_split=options["train"]["tr_to_val_split"])
 
+    # Get the log and model file paths
+    logfile_path, modelfile_path = create_log_and_model_folders(class_index=iclass,
+                                                                num_classes=num_classes,
+                                                                logfile_foldername=logfile_foldername,
+                                                                modelfile_foldername=modelfile_foldername,
+                                                                model_name="dyn_esn_flow"
+                                                                )
+
     # Creating and saving training and validation indices for each dataset corresponding to a particular 
     # phoneme class. The training indices are to be used immediately to create a DataLoader object for the training
     # data. Since the validation dataset requires all the training models (for each class of phonomes) to be created
@@ -108,8 +120,31 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
     #                                indices=val_indices)
 
     # Get the device
+    ngpu = 1 # Comment this out if you want to run on cpu and the next line just set device to "cpu"
+    device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu>0) else "cpu")
+    print("Device Used:{}".format(device))
 
     # Initialize the model
+    dyn_esn_flow_model = DynESN_flow(num_categories=num_classes,
+                            batch_size=options["train"]["batch_size"],
+                            device=device,
+                            **options["dyn_esn_flow"])
+    tr_verbose = True  
+    save_checkpoints = "all"
+    
+    # Run the model training
+    tr_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, nepochs=options["train"]["n_epochs"],
+                                        trainloader=training_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
+                                        tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
+    #if tr_verbose == True:
+    #    plot_losses(tr_losses=tr_losses, val_losses=val_losses, logscale=False)
+    
+    if not tr_losses is None:
+        losses_model = {}
+        losses_model["tr_losses"] = tr_losses
+
+        with open('./plot_data/dyn_esn_flow_tr_losses_eps{}.json'.format(options["train"]["n_epochs"]), 'w') as f:
+            f.write(json.dumps(losses_model, cls=NDArrayEncoder, indent=2))
 
     return None
 
@@ -122,20 +157,24 @@ if __name__ == "__main__":
     parser.add_argument("--class_number", help="Enter the class number (1, 2, ..., <num_classes>), with <num_classes>=39", type=int)
     parser.add_argument("--classmap", help="Enter full path to the class_map.json file", type=str, default="./data/class_map.json")
     parser.add_argument("--config", help="Enter full path to the .json file containing the model hyperparameters", type=str, default="./config/configurations.json")
-    parser.add_argument("--logfile_path", help="Enter the output path to save the logfile", type=str, default=None)
-    parser.add_argument("--modelfile_path", help="Enter the output path to save the models / model checkpoints", type=str, default=None)
-    parser.add_argument("--splits_file", help="Enter the name of the splits file", type=str, default="tr_to_val_splits_file.pkl")
+    parser.add_argument("--splits_file", help="Enter the name of the splits file (in case of validation data testing)", type=str, default="tr_to_val_splits_file.pkl")
+    #parser.add_argument("--logfile_path", help="Enter the output path to save the logfile", type=str, default=None)
+    #parser.add_argument("--modelfile_path", help="Enter the output path to save the models / model checkpoints", type=str, default=None)
 
     args = parser.parse_args() 
     train_datafile = args.train_data
     iclass = args.class_number
     classmap_file = args.classmap
     config_file = args.config
-    logfile_path = args.logfile_path
-    modelfile_path = args.modelfile_path
     splits_file = args.splits_file
 
+    # Define the basepath for storing the logfiles
+    logfile_foldername = "/log/"
+
+    # Define the basepath for storing the modelfiles
+    modelfile_foldername = "/models/"
+
     train_model(train_datafile=train_datafile, iclass=iclass, classmap=classmap_file, config_file=config_file,
-                splits_file=splits_file, logfile_path=logfile_path, modelfile_path=modelfile_path)
+                splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername)
 
     sys.exit(0)

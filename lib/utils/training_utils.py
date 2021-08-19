@@ -44,13 +44,16 @@ def get_date_and_time():
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     return dt_string
 
-def create_log_and_model_folders(class_index, num_classes, logfile_path="log", modelfile_path="models", 
+def create_log_and_model_folders(class_index, num_classes, logfile_foldername="log", modelfile_foldername="models", 
                                  model_name="dynesn_flow", noise_type="clean"):
     
     log_file_name = "training_{}.log".format(class_index+1) # class_index = [0, 1, 2, ..., 38] (assuming 39 classes)
 
-    logfile_path = "log"
-    modelfile_path = "models"
+    if logfile_foldername is None:
+        logfile_foldername = "log"
+    
+    if modelfile_foldername is None:
+        modelfile_foldername = "models"
 
     current_date = get_date_and_time()
     dd, mm, yy, hr, mins, secs = parse("{}/{}/{} {}:{}:{}", current_date)
@@ -58,10 +61,10 @@ def create_log_and_model_folders(class_index, num_classes, logfile_path="log", m
     main_exp_path = "./exp/{}classes/{}_{}/".format(num_classes, model_name, noise_type)
     main_exp_name = "exprun_{}{}{}_{}{}{}/".format(dd, mm, yy, hr, mins, secs)
 
-    full_logfile_path = create_file_paths(filepath=os.path.join(main_exp_path, logfile_path),
+    full_logfile_path = create_file_paths(filepath=os.path.join(main_exp_path, logfile_foldername),
                                               main_exp_name=main_exp_name)
 
-    full_modelfile_path = create_file_paths(filepath=os.path.join(main_exp_path, modelfile_path),
+    full_modelfile_path = create_file_paths(filepath=os.path.join(main_exp_path, modelfile_foldername),
                                                 main_exp_name=main_exp_name)
 
     flag_log_dir, flag_log_file = check_if_dir_or_file_exists(full_logfile_path,
@@ -84,7 +87,7 @@ def create_log_and_model_folders(class_index, num_classes, logfile_path="log", m
         print("Creating {}".format(full_modelfile_path))
         os.makedirs(full_modelfile_path, exist_ok=True)
         
-    return None
+    return full_logfile_path, full_modelfile_path
 
 #def push_model(nets, device='cpu'):
 #    nets = nets.to(device=device)

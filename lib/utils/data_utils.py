@@ -303,3 +303,9 @@ def create_splits_file_name(dataset_filename, splits_filename="tr_to_val_splits_
     idx_splitfilename = splits_filename.rfind(".pkl")
     splits_filename_modified = splits_filename[:idx_splitfilename] + "_" + dataset_filename[idx_dset_info:] 
     return splits_filename_modified
+
+class NDArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)

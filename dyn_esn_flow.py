@@ -32,9 +32,9 @@ class DynESN_gen_model(nn.Module):
 
 class DynESN_flow(nn.Module):
 
-    def __init__(self, num_categories=39, batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
+    def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
                 spectral_radius=0.8, hidden_layer_dim=15, n_flow_layers=4, num_hidden_layers=1,
-                learning_rate=0.8, use_toeplitz=True, device='cpu'):
+                learning_rate=0.8, use_toeplitz=True):
         super(DynESN_flow, self).__init__()
 
         self.num_categories = num_categories
@@ -43,6 +43,7 @@ class DynESN_flow(nn.Module):
         self.hidden_layer_dim = hidden_layer_dim
         self.n_flow_layers = n_flow_layers
         self.lr = learning_rate
+        self.device = device
 
         self.esn_dim = esn_dim
         self.frame_dim = frame_dim
@@ -78,7 +79,7 @@ class DynESN_flow(nn.Module):
         return loglike_seqeunce
         
 
-def train(dyn_esn_flow_model, options, nepochs, trainloader, device='cpu', logfile_path=None, modelfile_path=None, 
+def train(dyn_esn_flow_model, options, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
             tr_verbose=True, save_checkpoints=None):
 
     #TODO: Needs to be completed
@@ -89,7 +90,7 @@ def train(dyn_esn_flow_model, options, nepochs, trainloader, device='cpu', logfi
     starttime = timer()
 
     # Push the model to the device
-    dyn_esn_flow_model = push_model(mdl=dyn_esn_flow_model, mul_gpu_flag=options["set_mul_gpu"], device=device)
+    dyn_esn_flow_model = push_model(mdl=dyn_esn_flow_model, mul_gpu_flag=options["set_mul_gpu"])
 
     # Set the model to training mode
     dyn_esn_flow_model.train()
@@ -135,7 +136,7 @@ def train(dyn_esn_flow_model, options, nepochs, trainloader, device='cpu', logfi
 
             for i, tr_sequence_batch in enumerate(trainloader):
         
-                tr_sequence_batch = Variable(tr_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(device)
+                tr_sequence_batch = Variable(tr_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
                 optimizer.zero_grad()
                 tr_loglike_batch = dyn_esn_flow_model.forward(tr_sequence_batch)
                 tr_NLL_loss_batch = -torch.mean(tr_loglike_batch)
