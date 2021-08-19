@@ -6,6 +6,7 @@ import torch
 from torch import nn
 import sys
 from collections import deque
+import time
 
 class ConvgMonitor(nn.Module):
 
@@ -17,43 +18,6 @@ class ConvgMonitor(nn.Module):
 
     def report(self, logprob):
        return None
-
-def set_model(mdl_file, model_type):
-
-    if model_type == 'gaus':
-        with open(mdl_file, "rb") as handle:
-            mdl = pkl.load(handle)
-        mdl.device = 'cpu'
-        #f = lambda x: accuracy_fun(x, mdl=mdl)
-    elif model_type == 'gen' or model_type == 'glow':
-        mdl = load_model(mdl_file)
-        if torch.cuda.is_available():
-            if not options["Mul_gpu"]:
-                # default case, only one gpu
-                device = torch.device('cuda')
-                mdl.device = device
-                mdl.pushto(mdl.device)   
-            else:
-                for i in range(4):
-                    try:
-                        time.sleep(np.random.randint(10))
-                        device = torch.device('cuda:{}'.format(int(get_freer_gpu()) ))
-                        # print("Try to push to device: {}".format(device))
-                        mdl.device = device
-                        mdl.pushto(mdl.device)   
-                        break
-                    except:
-                        # if push error (maybe memory overflow, try again)
-                        # print("Push to device cuda:{} fail, try again ...")
-                        continue
-        else:
-            mdl.device = 'cpu'
-            mdl.pushto(mdl.device)
-
-        # set model into eval mode
-        mdl.eval()
-
-    return mdl
 
 def get_freer_gpu():
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
@@ -122,9 +86,37 @@ def create_log_and_model_folders(class_index, num_classes, logfile_path="log", m
         
     return None
 
-def push_model(nets, device='cpu'):
-    nets = nets.to(device=device)
-    return nets
+#def push_model(nets, device='cpu'):
+#    nets = nets.to(device=device)
+#    return nets
+
+def push_model(mdl, mul_gpu_flag=False, device='cpu'):
+
+    if torch.cuda.is_available():
+        if not mul_gpu_flag:
+            # default case, only one gpu
+            device = torch.device('cuda')
+            print("Try to push to device: {}".format(device))
+            mdl.device = device
+            mdl = mdl.to(mdl.device)   
+        else:
+            for i in range(4):
+                try:
+                    time.sleep(np.random.randint(10))
+                    device = torch.device('cuda:{}'.format(int(get_freer_gpu()) ))
+                    print("Try to push to device: {}".format(device))
+                    mdl.device = device
+                    mdl = mdl.to(mdl.device)   
+                    break
+                except:
+                    # if push error (maybe memory overflow, try again)
+                    print("Push to device cuda:{} fail, try again ...")
+                    continue
+    else:
+        mdl.device = 'cpu'
+        mdl = mdl.to(device)
+
+    return mdl
 
 def count_params(model):
     """
@@ -150,10 +142,12 @@ def load_model_from_weights(model_type, model_file, device):
     return None
 
 def save_model(model, filepath):
-    #TODO: Needs to be integrated with a KeyboardInterrupt code
+    # Needs to be integrated with a KeyboardInterrupt code
     # try:
         # Training loop runs here
+        # save model every few epochs
     #except KeyboardInterrupt:
-        # save model here
+        # save model here at the interrupted epoch
+        
     torch.save(model.state_dict(), filepath)
     return None

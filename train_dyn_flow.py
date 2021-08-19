@@ -107,6 +107,10 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
     #                                my_collate_fn=custom_collate_fn,
     #                                indices=val_indices)
 
+    # Get the device
+
+    # Initialize the model
+
     return None
 
 if __name__ == "__main__":

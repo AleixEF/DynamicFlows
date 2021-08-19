@@ -1,9 +1,12 @@
+import sys
 import torch
 import numpy as np
 from torch.autograd import Variable
 from torch import nn
 from lib.src import esn, flows
 from torch.optim import lr_scheduler as scheduler
+from timeit import default_timer as timer
+from lib.utils.training_utils import load_model_from_weights, push_model, count_params, save_model
 
 class DynESN_gen_model(nn.Module):
 
@@ -31,7 +34,7 @@ class DynESN_flow(nn.Module):
 
     def __init__(self, num_categories=39, batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
                 spectral_radius=0.8, hidden_layer_dim=15, n_flow_layers=4, num_hidden_layers=1,
-                learning_rate=0.8, use_toeplitz=True):
+                learning_rate=0.8, use_toeplitz=True, device='cpu'):
         super(DynESN_flow, self).__init__()
 
         self.num_categories = num_categories
@@ -41,76 +44,155 @@ class DynESN_flow(nn.Module):
         self.n_flow_layers = n_flow_layers
         self.lr = learning_rate
 
-        self.esn_model = esn.EchoStateNetwork(frame_dim, 
-                                            esn_dim=esn_dim, 
-                                            conn_per_neur=conn_per_neuron, 
-                                            spectr_rad=spectral_radius)
+        self.esn_dim = esn_dim
+        self.frame_dim = frame_dim
+        self.conn_per_neur = conn_per_neuron
+        self.specral_rad = spectral_radius
 
-        self.flow_model = flows.NormalizingFlow(frame_dim, 
-                                                hidden_layer_dim, 
-                                                num_flow_layers=n_flow_layers,
-                                                esn_dim=esn_dim, 
+        self.use_toeplitz = use_toeplitz
+
+        self.esn_model = esn.EchoStateNetwork(frame_dim=self.frame_dim, 
+                                            esn_dim=self.esn_dim, 
+                                            conn_per_neur=self.conn_per_neuron, 
+                                            spectr_rad=self.spectral_radius)
+
+        self.flow_model = flows.NormalizingFlow(frame_dim=self.frame_dim, 
+                                                hidden_layer_dim=self.hidden_layer_dim, 
+                                                num_flow_layers=self.n_flow_layers,
+                                                esn_dim=self.esn_dim, 
                                                 b_mask=None,  # Not sure where to put this part  
-                                                num_hidden_layers=num_hidden_layers, 
-                                                toeplitz=use_toeplitz
+                                                num_hidden_layers=self.num_hidden_layers, 
+                                                toeplitz=self.use_toeplitz
                                                 )
 
-        #self.flow_models = [flows.NormalizingFlow(frame_dim, 
-        #                                        hidden_layer_dim, 
-        #                                        num_flow_layers=n_flow_layers,
-        #                                        esn_dim=esn_dim, 
-        #                                        b_mask=None,  # Not sure where to put this part  
-        #                                        num_hidden_layers=num_hidden_layers, 
-        #                                        toeplitz=use_toeplitz
-        #                                        )
-        #           for _ in range(self.num_categories)]  # one model per category
+    def forward(self, sequence_batch):
+        """ This function performs a single forward pass and retrives a batch of 
+        log-likelihoods using the loglike_sequence() of the flow_model, NOTE: We consider as 
+        the forward direction `X (data)` ----> `Z (latent)`
 
-    def set_models_train(self):
-        for nf in self.flow_models:
-            nf.train()
-
-    def set_models_eval(self):
-        for nf in self.flow_models:
-            nf.eval()
-
-    def train_sequences(self, nf, esn_model, optimizer, lr_scheduler, sequences_batch):
-
-        loglike = nf.loglike_sequence(sequences_batch, esn_model)
-        loss = -torch.mean(loglike)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        lr_scheduler.step()
-
-        return loss
-
-    def train(self, n_epochs, trainloader):
-
-        #TODO: Needs to be completed
-        self.optimizer = torch.optim.SGD(self.flow_model.parameters(), lr=self.learning_rate)
-        self.lr_scheduler = scheduler.StepLR(optimizer=self.optimizer, step_size=n_epochs//3, gamma=0.9)
-
-        for epoch_idx in range(n_epochs):
-
-            for i, tr_data_batch in enumerate(trainloader):
+        Args:
+            sequence_batch ([torch.Tensor]]): A batch of tensors, as input (max_seq_len, batch_size, frame_dim)
+            esn_encoding ([object]): An object of the ESN model class (shouldn't be trained)
+        """
+        loglike_seqeunce = self.flow_model.loglike_sequence(sequence_batch, self.esn_model)
+        return loglike_seqeunce
         
-                sequence_batch = torch.from_numpy(tr_data_batch).float()
-                self.optimizer.zero_grad()
-                loglike = self.flow_model.loglike_sequence(sequence_batch, self.esn_model)
-                loss = -torch.mean(loglike)
-                loss.backward()
-                self.optimizer.step()
+
+def train(dyn_esn_flow_model, options, nepochs, trainloader, device='cpu', logfile_path=None, modelfile_path=None, 
+            tr_verbose=True, save_checkpoints=None):
+
+    #TODO: Needs to be completed
+    optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.learning_rate)
+    lr_scheduler = scheduler.StepLR(optimizer=optimizer, step_size=nepochs//3, gamma=0.9)
+
+    # Measure epoch time
+    starttime = timer()
+
+    # Push the model to the device
+    dyn_esn_flow_model = push_model(mdl=dyn_esn_flow_model, mul_gpu_flag=options["set_mul_gpu"], device=device)
+
+    # Set the model to training mode
+    dyn_esn_flow_model.train()
+
+    # Get the number of trainable + non-trainable parameters
+    total_num_params, total_num_trainable_params = count_params(dyn_esn_flow_model)
+
+    if modelfile_path is None:
+        modelfile_path = "./models/"
+    else:
+        modelfile_path = modelfile_path
     
-                if epoch_idx % 10 == 0:
-                    print("Update no. {}, loss for model: {}".format(epoch_idx,
-                                                                    loss.item()))
+    if logfile_path is None:
+        training_logfile = "./log/training.log"
+    else:
+        training_logfile = logfile_path
 
-            self.lr_scheduler.step()
+    orig_stdout = sys.stdout
+    f_tmp = open(training_logfile, 'a')
+    sys.stdout = f_tmp
 
-        return None
+    tr_losses = [] # Empty list to store NLL for every epoch to plot it later on
 
-    def predict(self):
+    print("------------------------------ Training begins --------------------------------- \n")
+    #print("Config: {} \n".format())
+    #print("\n Config: {} \n".format(), file=orig_stdout)
 
-        return None
+    #NOTE: Often two print statements are given because we want to save something to logfile and also to console output
+    # Might modify this later on, to just kep for the logfile
+    print("No. of trainable parameters: {}, non-trainable parameters: {}\n".format(total_num_trainable_params, 
+                                                                                    total_num_params - total_num_trainable_params), 
+                                                                                    file=orig_stdout)
+    print("No. of trainable parameters: {}, non-trainable parameters: {}\n".format(total_num_trainable_params, 
+                                                                                    total_num_params - total_num_trainable_params))
+
+    # Introducing a way to save model progress when KeyboardInterrupt is encountered
+    try:
+
+        for epoch in range(nepochs):
+            
+            tr_NLL_epoch_sum = 0.0
+            tr_NLL_running_loss = 0.0
+
+            for i, tr_sequence_batch in enumerate(trainloader):
+        
+                tr_sequence_batch = Variable(tr_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(device)
+                optimizer.zero_grad()
+                tr_loglike_batch = dyn_esn_flow_model.forward(tr_sequence_batch)
+                tr_NLL_loss_batch = -torch.mean(tr_loglike_batch)
+                tr_NLL_loss_batch.backward()
+                optimizer.step()
+
+                # Accumulate statistics
+                tr_NLL_epoch_sum += tr_NLL_loss_batch.item()
+                tr_NLL_running_loss += tr_NLL_loss_batch.item()
+                
+                # print every 10 mini-batches, every epoch
+                if i % 10 == 9 and ((epoch + 1) % 1 == 0):  
+                    print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 10))
+                    print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 10), file=orig_stdout)
+                    tr_NLL_running_loss = 0.0
+
+
+            # Updating the learning rate scheduler 
+            lr_scheduler.step()
+
+            # Loss at the end of each epoch, averaged out by the number of batches in the training dataloader
+            tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)
+            
+            # Measure wallclock time
+            endtime = timer()
+            time_elapsed = endtime - starttime
+        
+            # Displaying loss every few epochs
+            if tr_verbose == True and (((epoch + 1) % 10) == 0 or epoch == 0):
+                
+                print("Epoch: {}/{}, Training MSE Loss:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
+                nepochs, tr_NLL_epoch, time_elapsed), file=orig_stdout)
+
+                print("Epoch: {}/{}, Training MSE Loss:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
+                nepochs, tr_NLL_epoch, time_elapsed))
+            
+            # Checkpointing the model every few  epochs
+            if (((epoch + 1) % 10) == 0 or epoch == 0) and save_checkpoints == "all": 
+                # Checkpointing model every few epochs, in case of grid_search is being done, save_chkpoints = None
+                save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+            
+            elif (((epoch + 1) % nepochs) == 0) and save_checkpoints == "some": 
+                # Checkpointing model at the end of training epochs, in case of grid_search is being done, save_chkpoints = None
+                save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+
+            # Saving the losses 
+            tr_losses.append(tr_NLL_epoch)
+
+    except KeyboardInterrupt:
+
+        print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1), file=orig_stdout)
+        print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
+        save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+    
+    return tr_losses, dyn_esn_flow_model
+
+def predict(self):
+
+    return None
 
