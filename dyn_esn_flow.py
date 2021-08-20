@@ -77,8 +77,8 @@ class DynESN_flow(nn.Module):
             sequence_batch ([torch.Tensor]]): A batch of tensors, as input (max_seq_len, batch_size, frame_dim)
             esn_encoding ([object]): An object of the ESN model class (shouldn't be trained)
         """
-        loglike_seqeunce = self.flow_model.loglike_sequence(sequence_batch, self.esn_model, seq_lengths=sequence_batch_lengths)
-        return loglike_seqeunce
+        loglike_sequence = self.flow_model.loglike_sequence(sequence_batch, self.esn_model, seq_lengths=sequence_batch_lengths)
+        return loglike_sequence
         
 
 def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
@@ -197,7 +197,49 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
     
     return tr_losses, dyn_esn_flow_model
 
-def predict(self):
+def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader, mode="test", eval_logfile_path=None):
+    
+    #TODO: Needs to be completed and tested
+    eval_running_loss = 0.0
+    eval_NLL_loss_epoch_sum = 0.0
+    print("----------------------------- Evaluation Begins -----------------------------\n")    
+    
+    # Set model in evaluation mode
+    model = dyn_esn_flow_model
+    model.load_state_dict(torch.load(training_modelfile))
+    criterion = nn.MSELoss()
+    
+    # Push the model to the device
+    dyn_esn_flow_model = push_model(mdl=dyn_esn_flow_model, mul_gpu_flag=options["set_mul_gpu"])
 
-    return None
+    # Set the model to training mode
+    dyn_esn_flow_model.eval()
+
+    if not eval_logfile_path is None or os.path.exists(eval_logfile_path) == False:
+        eval_logfile = "./log/class{}_{}.log".format(iclass, mode)
+    else:
+        eval_logfile = eval_logfile_path
+
+    orig_stdout = sys.stdout
+    f_tmp = open(eval_logfile, 'a')
+    sys.stdout = f_tmp
+
+    with torch.no_grad():
+        
+        for i, eval_sequence_data in enumerate(evalloader):
+                
+            eval_sequence_batch, eval_sequence_batch_lengths = eval_sequence_data
+            eval_sequence_batch = Variable(eval_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+            eval_sequence_batch_lengths = Variable(eval_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+            eval_loglike_batch = dyn_esn_flow_model.forward(eval_sequence_batch, eval_sequence_batch_lengths)
+            eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
+
+            eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
+
+    eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
+
+    print('Test loss: {:.3f} using loaded weights: {} %'.format(eval_loss), file=orig_stdout)
+    print('Test loss: {:.3f} using loaded weights: {} %'.format(eval_loss))
+
+    return eval_loss
 
