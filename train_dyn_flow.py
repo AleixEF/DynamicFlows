@@ -19,7 +19,8 @@ from dyn_esn_flow import DynESN_flow, train, predict
 from lib.utils.training_utils import create_log_and_model_folders
 import time
 
-def train_model(train_datafile, iclass, classmap, config_file, splits_file, logfile_foldername = None, modelfile_foldername = None):
+def train_model(train_datafile, iclass, classmap_file, config_file, splits_file, logfile_foldername = None, 
+                modelfile_foldername = None, expname_basefolder=None):
 
     datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
     
@@ -76,7 +77,8 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
                                                                 num_classes=num_classes,
                                                                 logfile_foldername=logfile_foldername,
                                                                 modelfile_foldername=modelfile_foldername,
-                                                                model_name="dyn_esn_flow"
+                                                                model_name="dyn_esn_flow",
+                                                                expname_basefolder=expname_basefolder
                                                                 )
 
     # Creating and saving training and validation indices for each dataset corresponding to a particular 
@@ -133,7 +135,7 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
     save_checkpoints = "all"
     
     # Run the model training
-    tr_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, nepochs=options["train"]["n_epochs"],
+    tr_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass, nepochs=options["train"]["n_epochs"],
                                         trainloader=training_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
                                         tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
     #if tr_verbose == True:
@@ -148,7 +150,7 @@ def train_model(train_datafile, iclass, classmap, config_file, splits_file, logf
 
     return None
 
-if __name__ == "__main__":
+def main():
 
     usage = "Pass arguments to train a Dynamic ESN-based Normalizing flow model on a single speciifed dataset of phoneme"
     
@@ -158,8 +160,7 @@ if __name__ == "__main__":
     parser.add_argument("--classmap", help="Enter full path to the class_map.json file", type=str, default="./data/class_map.json")
     parser.add_argument("--config", help="Enter full path to the .json file containing the model hyperparameters", type=str, default="./config/configurations.json")
     parser.add_argument("--splits_file", help="Enter the name of the splits file (in case of validation data testing)", type=str, default="tr_to_val_splits_file.pkl")
-    #parser.add_argument("--logfile_path", help="Enter the output path to save the logfile", type=str, default=None)
-    #parser.add_argument("--modelfile_path", help="Enter the output path to save the models / model checkpoints", type=str, default=None)
+    parser.add_argument("--expname_basefolder", help="Enter the basepath to save the logfile, modefile", type=str, default=None)
 
     args = parser.parse_args() 
     train_datafile = args.train_data
@@ -167,14 +168,19 @@ if __name__ == "__main__":
     classmap_file = args.classmap
     config_file = args.config
     splits_file = args.splits_file
+    expname_basefolder = args.expname_basefolder
 
     # Define the basepath for storing the logfiles
-    logfile_foldername = "/log/"
+    logfile_foldername = "log"
 
     # Define the basepath for storing the modelfiles
-    modelfile_foldername = "/models/"
+    modelfile_foldername = "models"
 
-    train_model(train_datafile=train_datafile, iclass=iclass, classmap=classmap_file, config_file=config_file,
-                splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername)
+    train_model(train_datafile=train_datafile, iclass=iclass, classmap_file=classmap_file, config_file=config_file,
+                splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername,
+                expname_basefolder=expname_basefolder)
 
     sys.exit(0)
+
+if __name__ == "__main__":
+    main()

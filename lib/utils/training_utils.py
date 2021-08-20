@@ -1,23 +1,12 @@
 import numpy as np
 import os
 from parse import parse
-import datetime
+from datetime import datetime
 import torch
 from torch import nn
 import sys
 from collections import deque
 import time
-
-class ConvgMonitor(nn.Module):
-
-    def __init__(self, history=None, iter=0, verbose=True):
-        super(ConvgMonitor, self).__init__()
-        self.history = history
-        self.iter = iter
-        self.verbose = verbose
-
-    def report(self, logprob):
-       return None
 
 def get_freer_gpu():
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
@@ -45,9 +34,9 @@ def get_date_and_time():
     return dt_string
 
 def create_log_and_model_folders(class_index, num_classes, logfile_foldername="log", modelfile_foldername="models", 
-                                 model_name="dynesn_flow", noise_type="clean"):
+                                 model_name="dynesn_flow", noise_type="clean", expname_basefolder=None):
     
-    log_file_name = "training_{}.log".format(class_index+1) # class_index = [0, 1, 2, ..., 38] (assuming 39 classes)
+    log_file_name = "class{}_training.log".format(class_index+1) # class_index = [0, 1, 2, ..., 38] (assuming 39 classes)
 
     if logfile_foldername is None:
         logfile_foldername = "log"
@@ -57,15 +46,23 @@ def create_log_and_model_folders(class_index, num_classes, logfile_foldername="l
 
     current_date = get_date_and_time()
     dd, mm, yy, hr, mins, secs = parse("{}/{}/{} {}:{}:{}", current_date)
-    #print("Current date and time: {}".format(current_date))
-    main_exp_path = "./exp/{}classes/{}_{}/".format(num_classes, model_name, noise_type)
-    main_exp_name = "exprun_{}{}{}_{}{}{}/".format(dd, mm, yy, hr, mins, secs)
+    
+    #TODO: Modify this some time to make a common folder
 
-    full_logfile_path = create_file_paths(filepath=os.path.join(main_exp_path, logfile_foldername),
-                                              main_exp_name=main_exp_name)
+    if expname_basefolder is None or not os.path.exists(expname_basefolder) is True:
+        main_exp_path = "./exp/{}classes/{}_{}/".format(num_classes, model_name, noise_type)
+        main_exp_name = "exprun_{}{}{}/".format(dd, mm, yy)
+        expname_basefolder = os.path.join(main_exp_path, main_exp_name)
 
-    full_modelfile_path = create_file_paths(filepath=os.path.join(main_exp_path, modelfile_foldername),
-                                                main_exp_name=main_exp_name)
+    #full_logfile_path = create_file_paths(filepath=os.path.join(main_exp_path, logfile_foldername),
+    #                                          main_exp_name=main_exp_name)
+
+    full_logfile_path = os.path.join(expname_basefolder, logfile_foldername)
+
+    #full_modelfile_path = create_file_paths(filepath=os.path.join(main_exp_path, modelfile_foldername),
+    #                                            main_exp_name=main_exp_name)
+
+    full_modelfile_path = os.path.join(expname_basefolder, modelfile_foldername)
 
     flag_log_dir, flag_log_file = check_if_dir_or_file_exists(full_logfile_path,
                                                                file_name=log_file_name)
@@ -87,7 +84,7 @@ def create_log_and_model_folders(class_index, num_classes, logfile_foldername="l
         print("Creating {}".format(full_modelfile_path))
         os.makedirs(full_modelfile_path, exist_ok=True)
         
-    return full_logfile_path, full_modelfile_path
+    return os.path.join(full_logfile_path, log_file_name), full_modelfile_path
 
 #def push_model(nets, device='cpu'):
 #    nets = nets.to(device=device)

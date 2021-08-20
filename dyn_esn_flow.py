@@ -2,6 +2,7 @@ import sys
 import torch
 import numpy as np
 from torch.autograd import Variable
+import os
 from torch import nn
 from lib.src import esn, flows
 from torch.optim import lr_scheduler as scheduler
@@ -43,12 +44,13 @@ class DynESN_flow(nn.Module):
         self.hidden_layer_dim = hidden_layer_dim
         self.n_flow_layers = n_flow_layers
         self.lr = learning_rate
+        self.num_hidden_layers = num_hidden_layers
         self.device = device
 
         self.esn_dim = esn_dim
         self.frame_dim = frame_dim
-        self.conn_per_neur = conn_per_neuron
-        self.specral_rad = spectral_radius
+        self.conn_per_neuron = conn_per_neuron
+        self.spectral_radius = spectral_radius
 
         self.use_toeplitz = use_toeplitz
 
@@ -66,7 +68,7 @@ class DynESN_flow(nn.Module):
                                                 toeplitz=self.use_toeplitz
                                                 )
 
-    def forward(self, sequence_batch):
+    def forward(self, sequence_batch, sequence_batch_lengths):
         """ This function performs a single forward pass and retrives a batch of 
         log-likelihoods using the loglike_sequence() of the flow_model, NOTE: We consider as 
         the forward direction `X (data)` ----> `Z (latent)`
@@ -75,15 +77,15 @@ class DynESN_flow(nn.Module):
             sequence_batch ([torch.Tensor]]): A batch of tensors, as input (max_seq_len, batch_size, frame_dim)
             esn_encoding ([object]): An object of the ESN model class (shouldn't be trained)
         """
-        loglike_seqeunce = self.flow_model.loglike_sequence(sequence_batch, self.esn_model)
+        loglike_seqeunce = self.flow_model.loglike_sequence(sequence_batch, self.esn_model, seq_lengths=sequence_batch_lengths)
         return loglike_seqeunce
         
 
-def train(dyn_esn_flow_model, options, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
+def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
             tr_verbose=True, save_checkpoints=None):
 
     #TODO: Needs to be completed
-    optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.learning_rate)
+    optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.lr)
     lr_scheduler = scheduler.StepLR(optimizer=optimizer, step_size=nepochs//3, gamma=0.9)
 
     # Measure epoch time
@@ -104,7 +106,7 @@ def train(dyn_esn_flow_model, options, nepochs, trainloader, logfile_path=None, 
         modelfile_path = modelfile_path
     
     if logfile_path is None:
-        training_logfile = "./log/training.log"
+        training_logfile = "./log/training_dyn_esn_flow_class_{}.log".format(iclass+1)
     else:
         training_logfile = logfile_path
 
@@ -134,11 +136,13 @@ def train(dyn_esn_flow_model, options, nepochs, trainloader, logfile_path=None, 
             tr_NLL_epoch_sum = 0.0
             tr_NLL_running_loss = 0.0
 
-            for i, tr_sequence_batch in enumerate(trainloader):
-        
+            for i, tr_sequence_data in enumerate(trainloader):
+                
+                tr_sequence_batch, tr_sequence_batch_lengths = tr_sequence_data
                 tr_sequence_batch = Variable(tr_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+                tr_sequence_batch_lengths = Variable(tr_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
                 optimizer.zero_grad()
-                tr_loglike_batch = dyn_esn_flow_model.forward(tr_sequence_batch)
+                tr_loglike_batch = dyn_esn_flow_model.forward(tr_sequence_batch, tr_sequence_batch_lengths)
                 tr_NLL_loss_batch = -torch.mean(tr_loglike_batch)
                 tr_NLL_loss_batch.backward()
                 optimizer.step()
@@ -176,11 +180,11 @@ def train(dyn_esn_flow_model, options, nepochs, trainloader, logfile_path=None, 
             # Checkpointing the model every few  epochs
             if (((epoch + 1) % 10) == 0 or epoch == 0) and save_checkpoints == "all": 
                 # Checkpointing model every few epochs, in case of grid_search is being done, save_chkpoints = None
-                save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
             
             elif (((epoch + 1) % nepochs) == 0) and save_checkpoints == "some": 
                 # Checkpointing model at the end of training epochs, in case of grid_search is being done, save_chkpoints = None
-                save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
 
             # Saving the losses 
             tr_losses.append(tr_NLL_epoch)

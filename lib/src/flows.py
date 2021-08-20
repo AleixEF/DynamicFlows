@@ -107,7 +107,7 @@ class NormalizingFlow(nn.Module):
 
         """
 
-        loglike_frame = torch.zeros(x_frame.size(0)) # Since loglike_frame is supposed to be a 2d array of shape (batch_size, 1)
+        loglike_frame = 0.0 # Since loglike_frame is supposed to be a 2d array of shape (batch_size, 1)
 
         #z_latent = x_frame # So z_latent now has shape (batch_size, frame_dim)
 
