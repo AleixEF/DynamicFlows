@@ -48,7 +48,8 @@ class GaussianHmm(object):
     
     def emission_expected_value(self, frame_instant):
         prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
-            self.a_trans, frame_instant)  # array of shape n_states
+            self.a_trans, frame_instant+1)  # array of shape n_states
+        
         # expected value = sum_{i=1}^N {\mu_i * P(S_t=i)}
         # \mu_i is the gauss mean of size frame_dim and N is the num of states
         expected_value = np.sum(

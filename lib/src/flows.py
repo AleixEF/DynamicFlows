@@ -97,20 +97,21 @@ class NormalizingFlow(nn.Module):
         return loglike_seq
     
     def sample(self, seq_length, batch_size, esn_object):
-        sequences = torch.zeros((seq_length, batch_size, self.frame_dim))
-        
-        esn_object.init_hidden_state(batch_size)
-        # we neeed to sample latent data from a multivariate std distirbution
-        norm_distr = torch.distributions.MultivariateNormal(
-            loc=torch.zeros(self.frame_dim),
-            covariance_matrix=torch.eye(self.frame_dim))
-        
-        for frame_instant in range(seq_length):
-            latent_batch = norm_distr.rsample(sample_shape=(batch_size,))
-            x_frame = self.g_transform(latent_batch, esn_object.h_esn)
-                                                        
-            sequences[frame_instant] = x_frame
-            esn_object.next_hidden_state(x_frame)
+        with torch.no_grad():
+            sequences = torch.zeros((seq_length, batch_size, self.frame_dim))
+            
+            esn_object.init_hidden_state(batch_size)
+            # we neeed to sample latent data from a multivariate std distirbution
+            norm_distr = torch.distributions.MultivariateNormal(
+                loc=torch.zeros(self.frame_dim),
+                covariance_matrix=torch.eye(self.frame_dim))
+            
+            for frame_instant in range(seq_length):
+                latent_batch = norm_distr.rsample(sample_shape=(batch_size,))
+                x_frame = self.g_transform(latent_batch, esn_object.h_esn)
+                                                            
+                sequences[frame_instant] = x_frame
+                esn_object.next_hidden_state(x_frame)
         return sequences    
 
     def loglike_frame(self, x_frame, h_esn):
