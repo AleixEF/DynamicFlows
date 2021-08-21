@@ -209,8 +209,7 @@ def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader,
     print("----------------------------- Evaluation Begins -----------------------------\n")    
     
     # Set model in evaluation mode
-    model = dyn_esn_flow_model
-    model.load_state_dict(torch.load(training_modelfile))
+    dyn_esn_flow_model.load_state_dict(torch.load(training_modelfile))
     criterion = nn.MSELoss()
     
     # Push the model to the device
