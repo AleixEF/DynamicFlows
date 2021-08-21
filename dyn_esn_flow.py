@@ -9,6 +9,7 @@ from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
 from lib.utils.training_utils import load_model_from_weights, push_model, count_params, save_model
 
+
 class DynESN_gen_model(nn.Module):
 
     def __init__(self, num_classes=39):
@@ -20,16 +21,19 @@ class DynESN_gen_model(nn.Module):
     def sample(self):
         return None
 
-    def predict_sequences(self, models_list):
+    def predict_sequences(self, models_list, sequences, sequence_batch_lengths):
+        num_models = len(models_list)
+        # sequences has shape (seq_length, batch_size, frame_dim)
+        batch_size = sequences.shape[1]  
+        likelihoods_per_model = torch.zeros((num_models, batch_size))
+        with torch.no_grad():
+            for i, model in enumerate(num_models):
+                model.eval()
+                likelihoods_per_model[i] = model.forward(sequences, sequence_batch_lengths)
+            
+            predictions = torch.argmax(likelihoods_per_model, dim=0)
+        return predictions
 
-        #TODO: Need to adapt this in a more general way
-
-        #n_categories = len(models_list)
-        #likelihoods = torch.zeros(n_categories)
-        #for cat in range(n_categories):
-        #    likelihoods[cat] = models_list[cat].loglike_sequence(single_sequence, esn_model)
-        #return torch.argmax(likelihoods)  
-        return None
 
 class DynESN_flow(nn.Module):
 
