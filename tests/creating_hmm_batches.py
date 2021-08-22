@@ -40,6 +40,6 @@ for i in range(n_validation_batches):
 frame_instant = 0
 frame_expected_value = gauss_hmm.emission_expected_value(frame_instant)
 
-np.save(folder2save+'expected_value_frame' + str(frame_instant), 
+np.save(folder2save + 'expected_value_frame' + str(frame_instant), 
         frame_expected_value)
 print(frame_expected_value)

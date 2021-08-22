@@ -20,6 +20,19 @@ import numpy as np
 from context import esn, flows
 
 
+def compute_validation_loss(nf, esn_model, folder2load, n_val_batches):
+    loss = 0
+    for i in range(n_val_batches):
+        batch_filename = "".join([folder2load, '64_val', str(i), '.npy'])
+        batch = torch.from_numpy(np.load(batch_filename)).float()
+        
+        batch_loss = validate(nf, esn_model, batch)
+        loss += batch_loss
+        
+    loss /= n_val_batches
+    return loss
+    
+
 def validate(nf, esn_model, sequences_batch):
     with torch.no_grad():
         loglike = nf.loglike_sequence(sequences_batch, esn_model)
@@ -52,20 +65,23 @@ def compute_frame_expected_value(frame_instant, nf, esn_object,
 
 frame_dim = 2
 seq_length = 10
-n_train_batches = 100
+n_train_batches = 1000
 n_val_batches = n_train_batches // 5
 
 folder2load = "".join(['hmm_batches/', 'amount', str(1000), '/']) 
 
-hidden_dim = 16
+hidden_dim = 8
 num_flow_layers = 4
+use_toeplitz = False
 learning_rate = 1e-3
 
-nf = flows.NormalizingFlow(frame_dim, hidden_dim, num_flow_layers=num_flow_layers)
+
+nf = flows.NormalizingFlow(frame_dim, hidden_dim, 
+                           num_flow_layers=num_flow_layers, toeplitz=use_toeplitz)
 echo_state = esn.EchoStateNetwork(frame_dim)
 optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 
-num_epochs = 2
+num_epochs = 15
 
 nf.train()
 train_loss_evol = []
@@ -85,17 +101,13 @@ for epoch in range(num_epochs):
     train_loss_evol.append(train_loss)
     print("train loss:", train_loss)
     
-    val_loss = 0
-    for i in range(n_val_batches):
-        val_batch_filename = "".join([folder2load, '64_val', str(i), '.npy'])
-        val_batch = torch.from_numpy(np.load(val_batch_filename)).float()
-        
-        val_batch_loss = validate(nf, echo_state, val_batch)
-        val_loss += val_batch_loss
-    
-    val_loss /= n_val_batches
-    val_loss_evol.append(val_loss)
+    val_loss = compute_validation_loss(nf, echo_state, folder2load, n_val_batches)
     print("val loss:", val_loss, "\n")
+    
+    val_loss_evol.append(val_loss)
+    # we stop training without patience if we overfit 
+    if epoch > 0 and (val_loss_evol[-1] > val_loss_evol[-2]):
+        break
         
     
 plt.figure()
@@ -111,7 +123,8 @@ theoretical_expected = np.load(folder2load + 'expected_value_frame' + str(frame_
 
 print("theoretical expected", theoretical_expected)
 
-nf_expected = compute_frame_expected_value(frame_instant, nf, echo_state)
+nf_expected = compute_frame_expected_value(frame_instant, nf, echo_state, 
+                                           num_gibbs_sampling=100_000)
 print("model samples mean:", nf_expected)
 
 
