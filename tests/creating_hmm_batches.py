@@ -18,10 +18,10 @@ from context import hmm
 frame_dim = 2
 seq_length = 10
 batch_size = 64
-n_train_batches = 1000
+n_train_batches = 2000
 n_validation_batches = n_train_batches // 5  # ratio validaton-train 1:5 
 
-folder2save = "".join(['hmm_batches/', 'amount', str(n_train_batches), '/']) 
+folder2save = 'hmm_batches/' 
 
 gauss_hmm = hmm.GaussianHmm(frame_dim)
 
@@ -37,9 +37,18 @@ for i in range(n_validation_batches):
                                     str(i), '.npy']) 
     np.save(val_batch_filename, val_batch)
 
-frame_instant = 0
-frame_expected_value = gauss_hmm.emission_expected_value(frame_instant)
+expected_frames = np.zeros((seq_length, frame_dim))
+for frame_instant in range(seq_length):
+    expected_frames[frame_instant] = gauss_hmm.emission_expected_value(frame_instant)
 
-np.save(folder2save + 'expected_value_frame' + str(frame_instant), 
-        frame_expected_value)
-print(frame_expected_value)
+np.save(folder2save + 'expected_value_frames', expected_frames)
+print("theoretical expected values:")
+print(expected_frames)
+print()
+
+# to check that the calculation is correct, we do some gibbs sampling and 
+# compare the means with the theoretical result
+sampled_sequences = gauss_hmm.sample_sequences(seq_length, 10_000)
+approx_expected_frames = np.mean(sampled_sequences, axis=1)
+print("mean of the sampled frames:\n")
+print(approx_expected_frames)
