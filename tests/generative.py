@@ -75,8 +75,8 @@ num_flow_layers = 4
 use_toeplitz = False
 learning_rate = 1e-3
 
-num_epochs = 15
-num_gibbs_sampling = 10_000
+num_epochs = 100
+num_gibbs_sampling = 50_000
 
 nf = flows.NormalizingFlow(frame_dim, hidden_dim, 
                            num_flow_layers=num_flow_layers, toeplitz=use_toeplitz)
@@ -128,6 +128,8 @@ print("model samples mean")
 print(frames_mean)
 
 rel_diff = 100 * np.abs((frames_mean.numpy()-theoretical_expected) / (theoretical_expected))
+
 print("relative difference")
+np.set_printoptions(precision=1)
 print(rel_diff)
 
