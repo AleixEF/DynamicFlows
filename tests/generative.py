@@ -20,6 +20,13 @@ import numpy as np
 from context import esn, flows
 
 
+def validate(nf, esn_model, sequences_batch):
+    with torch.no_grad():
+        loglike = nf.loglike_sequence(sequences_batch, esn_model)
+        loss = -torch.mean(loglike)
+    return loss.item()
+        
+
 def train(nf, esn_model, optimizer, sequences_batch):
     loglike = nf.loglike_sequence(sequences_batch, esn_model)
     loss = -torch.mean(loglike)
@@ -45,8 +52,10 @@ def compute_frame_expected_value(frame_instant, nf, esn_object,
 
 frame_dim = 2
 seq_length = 10
-n_batches = 100
-folder2load = "".join(['hmm_batches/', 'amount', str(n_batches), '/']) 
+n_train_batches = 100
+n_val_batches = n_train_batches // 5
+
+folder2load = "".join(['hmm_batches/', 'amount', str(1000), '/']) 
 
 hidden_dim = 16
 num_flow_layers = 4
@@ -56,28 +65,43 @@ nf = flows.NormalizingFlow(frame_dim, hidden_dim, num_flow_layers=num_flow_layer
 echo_state = esn.EchoStateNetwork(frame_dim)
 optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 
-num_epochs = 30
+num_epochs = 2
 
 nf.train()
-loss_evol = []
+train_loss_evol = []
+val_loss_evol = []
 
 for epoch in range(num_epochs):
     print("epoch:", epoch)
-    dataset_loss = 0
-    dataset_mean = 0
-    for i in range(n_batches):
-        batch_filename = "".join([folder2load, '64_', str(i), '.npy'])                                
-        batch = torch.from_numpy(np.load(batch_filename)).float()
+    train_loss = 0
+    for i in range(n_train_batches):
+        train_batch_filename = "".join([folder2load, '64_train', str(i), '.npy'])                                
+        train_batch = torch.from_numpy(np.load(train_batch_filename)).float()
         
-        batch_loss = train(nf, echo_state, optimizer, batch)
-        dataset_loss += batch_loss
+        train_batch_loss = train(nf, echo_state, optimizer, train_batch)
+        train_loss += train_batch_loss
         
-    dataset_loss /= n_batches
-    loss_evol.append(dataset_loss)
-    print("dataset loss:", dataset_loss, "\n")
+    train_loss /= n_train_batches
+    train_loss_evol.append(train_loss)
+    print("train loss:", train_loss)
+    
+    val_loss = 0
+    for i in range(n_val_batches):
+        val_batch_filename = "".join([folder2load, '64_val', str(i), '.npy'])
+        val_batch = torch.from_numpy(np.load(val_batch_filename)).float()
+        
+        val_batch_loss = validate(nf, echo_state, val_batch)
+        val_loss += val_batch_loss
+    
+    val_loss /= n_val_batches
+    val_loss_evol.append(val_loss)
+    print("val loss:", val_loss, "\n")
+        
     
 plt.figure()
-plt.plot(loss_evol)
+plt.plot(train_loss_evol, label="train")
+plt.plot(val_loss_evol, label="validation")
+plt.legend()
 
 
 # here we compare the theoretical expected value of a frame with the mean of 
@@ -91,13 +115,12 @@ nf_expected = compute_frame_expected_value(frame_instant, nf, echo_state)
 print("model samples mean:", nf_expected)
 
 
-
 # plotting and comparing the emissions
 points2plot = 64
 nf_seq = nf.sample(frame_instant+1, points2plot, echo_state)
 nf_frame = nf_seq[frame_instant]
 
-hmm_frame = batch[frame_instant]
+hmm_frame = train_batch[frame_instant]  # some samples from the datset to plot 
 
 plt.figure()
 plt.title("frame num %d" % frame_instant)

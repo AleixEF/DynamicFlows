@@ -18,17 +18,24 @@ from context import hmm
 frame_dim = 2
 seq_length = 10
 batch_size = 64
-n_batches = 100
+n_train_batches = 1000
+n_validation_batches = n_train_batches // 5  # ratio validaton-train 1:5 
 
-folder2save = "".join(['hmm_batches/', 'amount', str(n_batches), '/']) 
+folder2save = "".join(['hmm_batches/', 'amount', str(n_train_batches), '/']) 
 
 gauss_hmm = hmm.GaussianHmm(frame_dim)
 
-for i in range(n_batches):
-    batch = gauss_hmm.sample_sequences(seq_length, batch_size)
-    batch_filename = "".join([folder2save, str(batch_size), '_', str(i), '.npy'])
-                             
-    np.save(batch_filename, batch)
+for i in range(n_train_batches):
+    train_batch = gauss_hmm.sample_sequences(seq_length, batch_size)
+    train_batch_filename = "".join([folder2save, str(batch_size), '_train', 
+                                    str(i), '.npy']) 
+    np.save(train_batch_filename, train_batch)
+    
+for i in range(n_validation_batches):
+    val_batch = gauss_hmm.sample_sequences(seq_length, batch_size)
+    val_batch_filename = "".join([folder2save, str(batch_size), '_val', 
+                                    str(i), '.npy']) 
+    np.save(val_batch_filename, val_batch)
 
 frame_instant = 0
 frame_expected_value = gauss_hmm.emission_expected_value(frame_instant)
