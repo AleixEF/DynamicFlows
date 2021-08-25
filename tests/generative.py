@@ -47,7 +47,7 @@ frame_dim = 2
 seq_length = 10
 batch_size = 128
 
-hidden_dim = 16
+hidden_dim = 64
 num_flow_layers = 4
 learning_rate = 1e-3
 
@@ -58,7 +58,7 @@ optimizer = torch.optim.SGD(nf.parameters(), lr=learning_rate)
 # dataset loading 
 dataset = torch.from_numpy(np.load('hmm_10000.npy')).float()
 
-num_epochs = 50
+num_epochs = 40
 num_dataset_batches = dataset.shape[1] // batch_size
 
 nf.train()
