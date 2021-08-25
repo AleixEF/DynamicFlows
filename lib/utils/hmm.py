@@ -27,6 +27,20 @@ class GaussianHmm(object):
             hidden_states = self.next_hidden_states(hidden_states)
             sequences[idx_seq] = self.emit_frame(hidden_states)
         return sequences
+    
+    def save(self, folder_path):
+        np.save(folder_path+"/init_prob.npy", self.initial_state_prob)
+        np.save(folder_path+"/a_trans.npy", self.a_trans)
+        np.save(folder_path+"/covariances.npy", self.cov_emissions)
+        np.save(folder_path+"/mean_emissions.npy", self.mean_emissions)
+        return
+
+    def load(self, folder_path):
+        self.initial_state_prob = np.load(folder_path+"/init_prob.npy")
+        self.a_trans = np.load(folder_path+"/a_trans.npy")
+        self.cov_emissions = np.load(folder_path+"/covariances.npy")                                     
+        self.mean_emissions = np.load(folder_path+"/mean_emissions.npy")
+        return self
 
     def next_hidden_states(self, hidden_states_prev):
         # hidden_states_prev is a 1D array
