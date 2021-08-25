@@ -1,3 +1,4 @@
+import enum
 import sys
 import torch
 import numpy as np
@@ -12,8 +13,46 @@ from lib.utils.training_utils import load_model_from_weights, push_model, count_
 
 class DynESN_gen_model(nn.Module):
 
-    def __init__(self, num_classes=39):
+    def __init__(self, full_modelfile_path, options, device='cpu', num_classes=39, eval_batch_size=128, epoch_ckpt_number=60):
         super(DynESN_gen_model, self).__init__()
+
+        self.options = options
+        self.device = device
+        self.num_classes = num_classes
+        self.eval_batch_size = eval_batch_size
+
+        self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(i+1, epoch_ckpt_number)) 
+                    for i in range(num_classes)]
+
+        self.check_model_files_exist() # Check if all the model files are present at the correct locations
+
+        self.list_of_models = self.create_list_of_models()
+
+
+    def check_model_files_exist(self):
+
+        for i, model_file in enumerate(self.list_of_model_files):
+            assert os.path.isfile(model_file) == True, "{} is not present!!".format(model_file)
+
+        return None
+    
+    def create_list_of_models(self):
+
+        list_of_models = []
+        for i, model_file in enumerate(self.list_of_model_files):
+
+            print("Loading model for class : {}".format(i+1))
+            dyn_esn_flow_model = DynESN_flow(DynESN_flow(num_categories=self.num_classes,
+                            batch_size=self.options["train"]["batch_size"],
+                            device=self.device,
+                            **self.options["dyn_esn_flow"]))
+
+            dyn_esn_flow_model.load_state_dict(torch.load(model_file))
+
+            list_of_models.append(dyn_esn_flow_model)
+
+        return list_of_models
+
 
     def infer(self):
         return None
@@ -21,19 +60,64 @@ class DynESN_gen_model(nn.Module):
     def sample(self):
         return None
 
-    def predict_sequences(self, models_list, sequences, sequence_batch_lengths):
-        num_models = len(models_list)
-        # sequences has shape (seq_length, batch_size, frame_dim)
-        batch_size = sequences.shape[1]  
-        likelihoods_per_model = torch.zeros((num_models, batch_size))
-        with torch.no_grad():
-            for i, model in enumerate(num_models):
-                model.eval()
-                likelihoods_per_model[i] = model.forward(sequences, sequence_batch_lengths)
-            
-            predictions = torch.argmax(likelihoods_per_model, dim=0)
-        return predictions
+    def predict_sequences(self, iclass, evalloader, mode="test", eval_logfile_path=None):
 
+
+        #TODO: Needs to be completed and tested
+        eval_running_loss = 0.0
+        eval_NLL_loss_epoch_sum = 0.0
+        print("----------------------------- Evaluation Begins -----------------------------\n")
+
+        num_models = len(self.list_of_models)
+        # sequences has shape (seq_length, batch_size, frame_dim)
+        #batch_size = sequences.shape[1]  
+        #likelihoods_per_model = torch.zeros((num_models, batch_size))
+
+        #with torch.no_grad():
+            
+        #    for i, model in enumerate(self.list_of_models):
+        #        model.eval()
+
+        #        likelihoods_per_model[i] = model.forward(sequences, sequence_batch_lengths)
+            
+        #    predictions = torch.argmax(likelihoods_per_model, dim=0)
+
+        if not eval_logfile_path is None or os.path.exists(eval_logfile_path) == False:
+            eval_logfile = "./log/class{}_{}.log".format(iclass, mode)
+        else:
+            eval_logfile = eval_logfile_path
+
+        orig_stdout = sys.stdout
+        f_tmp = open(eval_logfile, 'a')
+        sys.stdout = f_tmp
+
+        #NOTE: Make one more for loop for likelihood estimation
+        predictions_per_model = torch.zeros((num_models, self.eval_batch_size))
+
+        with torch.no_grad():
+        
+            for i, dyn_esn_flow_model in enumerate(self.list_of_models):
+                
+                dyn_esn_flow_model.eval()  
+                dyn_esn_flow_model_out_list = []
+                
+                for j, eval_sequence_data in enumerate(evalloader):
+                    
+                    eval_sequence_batch, eval_sequence_batch_lengths = eval_sequence_data
+                    eval_sequence_batch = Variable(eval_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+                    eval_sequence_batch_lengths = Variable(eval_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+                    eval_loglike_batch = dyn_esn_flow_model.forward(eval_sequence_batch, eval_sequence_batch_lengths)
+                    dyn_esn_flow_model_out_list.append(eval_loglike_batch)
+                    #eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
+                    #eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
+                
+                #eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
+                dyn_esn_model_out = torch.cat(dyn_esn_flow_model_out_list, dim=1)
+            
+            dyn_esn_model_class_hat = torch.argmax(dyn_esn_model_out, dim=0) + 1
+
+        return dyn_esn_model_class_hat
+        
 
 class DynESN_flow(nn.Module):
 
@@ -201,6 +285,7 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
     
     return tr_losses, dyn_esn_flow_model
 
+'''
 def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader, mode="test", eval_logfile_path=None):
     
     #TODO: Needs to be completed and tested
@@ -245,4 +330,4 @@ def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader,
     print('Test loss: {:.3f} using loaded weights: {} %'.format(eval_loss))
 
     return eval_loss
-
+'''

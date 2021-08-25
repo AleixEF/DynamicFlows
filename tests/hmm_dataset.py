@@ -11,7 +11,6 @@ import pickle
 
 from context import hmm
 
-
 def generate_and_save_dataset(frame_dim, num_sequences, min_seq_length=2, 
                               max_seq_length=10, outputfile="hmm.pkl"):
                               

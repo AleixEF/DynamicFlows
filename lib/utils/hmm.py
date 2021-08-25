@@ -1,9 +1,10 @@
 import numpy as np
+from numpy import lib
+from numpy.core.fromnumeric import mean
 from scipy.stats import invgamma
 
-
 class GaussianHmm(object):
-    def __init__(self, frame_dim, n_states=3):
+    def __init__(self, frame_dim, n_states=3, mean_emissions=None, cov_emissions=None):
 
         self.n_states = n_states
         self.frame_dim = frame_dim
@@ -12,9 +13,16 @@ class GaussianHmm(object):
         self.initial_state_prob, self.a_trans = init_transition_matrices(n_states)
 
         # shape (n_states, frame_dim)
-        self.mean_emissions = init_emission_means(n_states, frame_dim)
+        if mean_emissions is None:
+            self.mean_emissions = init_emission_means(n_states, frame_dim)
+        else:
+            self.mean_emissions = mean_emissions
+
         # shape (n_states, frame_dim, frame_dim)
-        self.cov_emissions = init_diagonal_cov_matrices(n_states, frame_dim)
+        if cov_emissions is None:
+            self.cov_emissions = init_diagonal_cov_matrices(n_states, frame_dim)
+        else:
+            self.cov_emissions = init_diagonal_cov_matrices(n_states, frame_dim)
 
     def sample_sequences(self, seq_length, n_sequences):
         # this data size is convenient for other libs like pytorch
@@ -69,17 +77,18 @@ def init_transition_matrices(n_states):
     return init_state_prob, a_trans
 
 
-def init_emission_means(n_states, frame_dim):
+def init_emission_means(n_states, frame_dim, l_lim=-5, u_lim=5):
     emission_means = np.zeros((n_states, frame_dim))
-    locs = np.random.uniform(low=-5, high=5, size=n_states)
+    locs = np.random.uniform(low=l_lim, high=u_lim, size=n_states)
     for i in range(n_states):
         emission_means[i] = np.random.normal(loc=locs[i], size=frame_dim)
     return emission_means
 
 
-def init_diagonal_cov_matrices(n_states, frame_dim):
+def init_diagonal_cov_matrices(n_states, frame_dim, l_lim=1, u_lim=2):
     cov_matrix = np.zeros((n_states, frame_dim, frame_dim))
-    inv_gamma_params = np.random.uniform(low=1, high=5 , size=n_states)
+    #inv_gamma_params = np.random.uniform(low=1, high=5 , size=n_states)
+    inv_gamma_params = np.random.uniform(low=l_lim, high=u_lim , size=n_states)
     for i_state, gamma_param in enumerate(inv_gamma_params):
         diagonal = np.abs(invgamma.rvs(gamma_param, size=frame_dim))
         cov_matrix[i_state] = np.diag(diagonal)
