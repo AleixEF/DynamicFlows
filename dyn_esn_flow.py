@@ -92,14 +92,14 @@ class DynESN_gen_model(nn.Module):
         sys.stdout = f_tmp
 
         #NOTE: Make one more for loop for likelihood estimation
-        predictions_per_model = torch.zeros((num_models, self.eval_batch_size))
+        llh_per_model_list = []
 
         with torch.no_grad():
         
             for i, dyn_esn_flow_model in enumerate(self.list_of_models):
                 
                 dyn_esn_flow_model.eval()  
-                dyn_esn_flow_model_out_list = []
+                dyn_esn_flow_model_LL = []
                 
                 for j, eval_sequence_data in enumerate(evalloader):
                     
@@ -107,16 +107,19 @@ class DynESN_gen_model(nn.Module):
                     eval_sequence_batch = Variable(eval_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
                     eval_sequence_batch_lengths = Variable(eval_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
                     eval_loglike_batch = dyn_esn_flow_model.forward(eval_sequence_batch, eval_sequence_batch_lengths)
-                    dyn_esn_flow_model_out_list.append(eval_loglike_batch)
-                    #eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
-                    #eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
+                    dyn_esn_flow_model_LL.append(eval_loglike_batch)
+                    eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
+                    eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
                 
-                #eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
-                dyn_esn_model_out = torch.cat(dyn_esn_flow_model_out_list, dim=1)
+                eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
+                print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
+                dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((-1, 1))
+                llh_per_model_list.append(dyn_esn_model_llh)
             
-            dyn_esn_model_class_hat = torch.argmax(dyn_esn_model_out, dim=0) + 1
+            llh_all_models = torch.cat(llh_per_model_list, dim=0)
+            predictions_all_models = torch.argmax(llh_all_models, dim=0) + 1
 
-        return dyn_esn_model_class_hat
+        return predictions_all_models
         
 
 class DynESN_flow(nn.Module):
@@ -170,7 +173,7 @@ class DynESN_flow(nn.Module):
         
 
 def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
-            tr_verbose=True, save_checkpoints=None):
+            tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed
     optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.lr)

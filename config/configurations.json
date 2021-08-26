@@ -5,8 +5,13 @@
     {
         "n_epochs": 60,
         "batch_size": 128,
-        "eval_batch_size": 128,
         "tr_to_val_split":0.8
+    },
+
+    "eval":
+    {
+        "batch_size": 128
+        
     },
 
     "dyn_esn_flow":
