@@ -1,4 +1,5 @@
 import enum
+from operator import mod
 import sys
 import torch
 import numpy as np
@@ -42,10 +43,10 @@ class DynESN_gen_model(nn.Module):
         for i, model_file in enumerate(self.list_of_model_files):
 
             print("Loading model for class : {}".format(i+1))
-            dyn_esn_flow_model = DynESN_flow(DynESN_flow(num_categories=self.num_classes,
+            dyn_esn_flow_model = DynESN_flow(num_categories=self.num_classes,
                             batch_size=self.options["train"]["batch_size"],
                             device=self.device,
-                            **self.options["dyn_esn_flow"]))
+                            **self.options["dyn_esn_flow"])
 
             dyn_esn_flow_model.load_state_dict(torch.load(model_file))
 
@@ -54,8 +55,8 @@ class DynESN_gen_model(nn.Module):
         return list_of_models
 
 
-    def infer(self):
-        return None
+    #def infer(self):
+    #    return None
 
     def sample(self):
         return None
@@ -85,7 +86,7 @@ class DynESN_gen_model(nn.Module):
         if not eval_logfile_path is None or os.path.exists(eval_logfile_path) == False:
             eval_logfile = "./log/class{}_{}.log".format(iclass, mode)
         else:
-            eval_logfile = eval_logfile_path
+            eval_logfile = os.path.join(eval_logfile_path, "class{}_{}.log".format(iclass+1, mode))
 
         orig_stdout = sys.stdout
         f_tmp = open(eval_logfile, 'a')
@@ -113,12 +114,13 @@ class DynESN_gen_model(nn.Module):
                 
                 eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
                 print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
-                dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((-1, 1))
+                dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((1, -1))
                 llh_per_model_list.append(dyn_esn_model_llh)
             
             llh_all_models = torch.cat(llh_per_model_list, dim=0)
             predictions_all_models = torch.argmax(llh_all_models, dim=0) + 1
 
+        sys.stdout = orig_stdout
         return predictions_all_models
         
 
@@ -208,16 +210,14 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
     tr_losses = [] # Empty list to store NLL for every epoch to plot it later on
 
     print("------------------------------ Training begins --------------------------------- \n")
+    print("------------------------------ Training begins --------------------------------- \n", file=orig_stdout)
     #print("Config: {} \n".format())
     #print("\n Config: {} \n".format(), file=orig_stdout)
 
     #NOTE: Often two print statements are given because we want to save something to logfile and also to console output
     # Might modify this later on, to just kep for the logfile
-    print("No. of trainable parameters: {}, non-trainable parameters: {}\n".format(total_num_trainable_params, 
-                                                                                    total_num_params - total_num_trainable_params), 
-                                                                                    file=orig_stdout)
-    print("No. of trainable parameters: {}, non-trainable parameters: {}\n".format(total_num_trainable_params, 
-                                                                                    total_num_params - total_num_trainable_params))
+    print("No. of trainable parameters: {}\n".format(total_num_trainable_params), file=orig_stdout)
+    print("No. of trainable parameters: {}\n".format(total_num_trainable_params))
 
     # Introducing a way to save model progress when KeyboardInterrupt is encountered
     try:
@@ -243,9 +243,9 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
                 tr_NLL_running_loss += tr_NLL_loss_batch.item()
                 
                 # print every 10 mini-batches, every epoch
-                if i % 10 == 9 and ((epoch + 1) % 1 == 0):  
-                    print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 10))
-                    print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 10), file=orig_stdout)
+                if i % 20 == 19 and ((epoch + 1) % 1 == 0):  
+                    #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20))
+                    #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20), file=orig_stdout)
                     tr_NLL_running_loss = 0.0
 
 
@@ -260,7 +260,7 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
             time_elapsed = endtime - starttime
         
             # Displaying loss every few epochs
-            if tr_verbose == True and (((epoch + 1) % 10) == 0 or epoch == 0):
+            if tr_verbose == True and (((epoch + 1) % 5) == 0 or epoch == 0):
                 
                 print("Epoch: {}/{}, Training MSE Loss:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
                 nepochs, tr_NLL_epoch, time_elapsed), file=orig_stdout)
@@ -269,7 +269,7 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
                 nepochs, tr_NLL_epoch, time_elapsed))
             
             # Checkpointing the model every few  epochs
-            if (((epoch + 1) % 10) == 0 or epoch == 0) and save_checkpoints == "all": 
+            if (((epoch + 1) % 5) == 0 or epoch == 0) and save_checkpoints == "all": 
                 # Checkpointing model every few epochs, in case of grid_search is being done, save_chkpoints = None
                 save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
             
@@ -284,8 +284,11 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
 
         print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1), file=orig_stdout)
         print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
-        save_model(dyn_esn_flow_model, modelfile_path + "/" + "dyn_esn_flow_ckpt_epoch_{}.pt".format(epoch+1))
+        save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
     
+    # Restoring the original std out pointer
+    sys.stdout = orig_stdout
+
     return tr_losses, dyn_esn_flow_model
 
 '''

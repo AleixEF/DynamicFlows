@@ -2,32 +2,30 @@ from operator import ne
 from numpy.core.numeric import full
 import torch
 import numpy as np
-from torch.autograd import Variable
-from torch import nn
 import os
 import sys
 from parse import parse
 import argparse
 import pickle as pkl
 import torch
-from torch.utils import data
-from torch.utils.data import DataLoader
 import json
 import numpy as np
+from torch.utils import data
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader, load_splits_file
 from lib.utils.data_utils import custom_collate_fn, obtain_tr_val_idx, create_splits_file_name
 from lib.utils.data_utils import NDArrayEncoder
-from dyn_esn_flow import DynESN_flow, train, predict, DynESN_gen_model
+from dyn_esn_flow import DynESN_gen_model
 from lib.utils.training_utils import create_log_and_model_folders
 from sklearn.metrics import classification_report
-import time
 
-def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_file, logfile_foldername = None, modelfile_foldername = None,
-                expname_basefolder=None, noise_type="clean", dataset_type="test"):
+def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, splits_file, 
+                logfile_foldername = None, modelfile_foldername = None, expname_basefolder=None, 
+                noise_type="clean", dataset_type="test"):
 
     datafolder = "".join(eval_datafile.split("/")[i]+"/" for i in range(len(eval_datafile.split("/")) - 1)) # Get the datafolder
     
-    eval_class_inputfile = eval_datafile.replace(".pkl", "_{}.pkl".format(iclass))
+    eval_class_inputfile = eval_datafile.replace(".pkl", "_{}.pkl".format(iclass+1)) # For HMM, this 'datafile' is something like [train/test]_hmm.pkl
+    print("Dataset: {}".format(eval_class_inputfile))
 
     assert os.path.isfile(classmap_file) == True, "Class map not present, kindly run prepare_data.py" 
     assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
@@ -45,7 +43,7 @@ def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_fil
     # Gets the phoneme corresponding to the class number from the classmap dictionary
     iclass_phn = classmap[str(iclass)]
 
-    num_classes, _ = parse("./data/{}.{:d}_{:d}.pkl".format(dataset_type), eval_class_inputfile)
+    #num_classes, _ = parse("./data/{}.{:d}_{:d}.pkl".format(dataset_type), eval_class_inputfile)
 
     # Load the configurations file
     with open(config_file) as cfg:
@@ -81,7 +79,8 @@ def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_fil
                                                                 logfile_foldername=logfile_foldername,
                                                                 modelfile_foldername=modelfile_foldername,
                                                                 model_name="dyn_esn_flow",
-                                                                expname_basefolder=expname_basefolder
+                                                                expname_basefolder=expname_basefolder,
+                                                                logfile_type="testing"
                                                                 )
 
     # Creating and saving training and validation indices for each dataset corresponding to a particular 
@@ -89,6 +88,7 @@ def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_fil
     # data. Since the validation dataset requires all the training models (for each class of phonomes) to be created
     # first (to form the generative model classifier), so at test time, it can load the split files to from the 
     # dataloaders corresponding to that class
+
     if splits_file is None or not os.path.isfile(splits_file):
         
         # Get indices to split the training_custom_dataset into training data and validation data
@@ -117,16 +117,23 @@ def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_fil
     if dataset_type.lower() == "test":
         
         eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
-                                        batch_size=options["train"]["batch_size"],
+                                        batch_size=options["eval"]["batch_size"],
                                         my_collate_fn=custom_collate_fn,
                                         indices=None)
 
     elif dataset_type.lower() == "val":
 
         eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
-                                        batch_size=options["train"]["batch_size"],
+                                        batch_size=options["eval"]["batch_size"],
                                         my_collate_fn=custom_collate_fn,
                                         indices=val_indices)
+    
+    elif dataset_type.lower() == "train":
+
+        eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
+                                        batch_size=options["eval"]["batch_size"],
+                                        my_collate_fn=custom_collate_fn,
+                                        indices=train_indices)
 
     #val_dataloader = get_dataloader(dataset=training_custom_dataset,
     #                                batch_size=options["train"]["eval_batch_size"],
@@ -144,14 +151,16 @@ def evaluate_model(eval_datafile, iclass, classmap_file, config_file, splits_fil
 
     # Run the model training
     model_predictions = dyn_esn_flow_gen.predict_sequences(iclass=iclass, evalloader=eval_dataloader, mode=dataset_type, eval_logfile_path=logfile_path)
-    true_predictions = torch.empty(size=(len(eval_custom_dataset))).fill_(iclass+1) # Make a tensor containing the true labels
-    
-    # Get the classification summary
-    print("Getting the classification summary...")
-    eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy())
-    print(eval_summary)
+    true_predictions = torch.empty(size=(len(eval_custom_dataset),)).fill_(iclass+1) # Make a tensor containing the true labels
 
-    with open(os.path.join(logfile_path, 'dyn_esn_model_gen_clsfcn_summary.json'), 'w') as f:
+    # Get the classification summary
+    print("Getting the classification summary for {}".format(eval_class_inputfile))
+    eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=True, zero_division=0)
+    eval_summary["num_sequences"] = len(eval_custom_dataset)
+    print("Accuracy for class:{}-{} data:{}".format(iclass+1, dataset_type, eval_summary['accuracy']))
+    #print(classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=False,  zero_division=0))
+
+    with open(os.path.join(logfile_foldername, "class_{}_dyn_esn_model_gen_clsfcn_summary.json".format(iclass+1)), 'w') as f:
             f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
 
     return None
@@ -163,7 +172,7 @@ def main():
     parser = argparse.ArgumentParser(description="Enter relevant arguments for training one Dynamic ESN-Based Normalizing flow model")
     parser.add_argument("--eval_data", help="Enter the full path to the training dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
     parser.add_argument("--num_classes", help="Enter the number of classes", type=int)
-    parser.add_argument("--class_number", help="Enter the class number (1, 2, ..., <num_classes>), with <num_classes>=39", type=int)
+    parser.add_argument("--class_index", help="Enter the class index (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=int, default=None)
     parser.add_argument("--classmap", help="Enter full path to the class_map.json file", type=str, default="./data/class_map.json")
     parser.add_argument("--config", help="Enter full path to the .json file containing the model hyperparameters", type=str, default="./config/configurations.json")
     parser.add_argument("--splits_file", help="Enter the name of the splits file (in case of validation data testing)", type=str, default="tr_to_val_splits_file.pkl")
@@ -174,7 +183,7 @@ def main():
     args = parser.parse_args() 
     eval_datafile = args.eval_data
     num_classes = args.num_classes
-    iclass = args.class_number
+    iclass = args.class_index
     classmap_file = args.classmap
     config_file = args.config
     splits_file = args.splits_file
@@ -189,11 +198,16 @@ def main():
     modelfile_foldername = "models"
 
     # Incase of HMM uncomment this line for the expname_basefolder
-    #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
+    if expname_basefolder == "hmm":
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
+    else:
+        pass
+    
+    for iclass in range(0, num_classes):
+        evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
+                    splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername, 
+                    expname_basefolder=expname_basefolder, noise_type=noise_type, dataset_type=dataset_type)
 
-    evaluate_model(eval_datafile=eval_datafile, iclass=iclass, classmap_file=classmap_file, config_file=config_file,
-                splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername, 
-                expname_basefolder=expname_basefolder, noise_type=noise_type, dataset_type=dataset_type)
 
     sys.exit(0)
 

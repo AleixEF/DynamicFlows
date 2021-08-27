@@ -34,9 +34,9 @@ def get_date_and_time():
     return dt_string
 
 def create_log_and_model_folders(class_index, num_classes, logfile_foldername="log", modelfile_foldername="models", 
-                                 model_name="dynesn_flow", noise_type="clean", expname_basefolder=None):
+                                 model_name="dynesn_flow", noise_type="clean", expname_basefolder=None, logfile_type="training"):
     
-    log_file_name = "class{}_training.log".format(class_index+1) # class_index = [0, 1, 2, ..., 38] (assuming 39 classes)
+    log_file_name = "class{}_{}.log".format(class_index+1, logfile_type) # class_index = [0, 1, 2, ..., 38] (assuming 39 classes)
 
     if logfile_foldername is None:
         logfile_foldername = "log"
@@ -49,7 +49,7 @@ def create_log_and_model_folders(class_index, num_classes, logfile_foldername="l
     
     #TODO: Modify this some time to make a common folder
 
-    if expname_basefolder is None or not os.path.exists(expname_basefolder) is True:
+    if expname_basefolder is None:
         main_exp_path = "./exp/{}classes/{}_{}/".format(num_classes, model_name, noise_type)
         main_exp_name = "exprun_{}{}{}/".format(dd, mm, yy)
         expname_basefolder = os.path.join(main_exp_path, main_exp_name)

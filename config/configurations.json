@@ -3,9 +3,9 @@
 
     "train":
     {
-        "n_epochs": 60,
+        "n_epochs": 10,
         "batch_size": 128,
-        "tr_to_val_split":0.8
+        "tr_to_val_split":1.0
     },
 
     "eval":
@@ -16,14 +16,14 @@
 
     "dyn_esn_flow":
     {
-        "frame_dim":40, 
+        "frame_dim":2, 
         "esn_dim":500, 
         "conn_per_neuron":10, 
         "spectral_radius":0.8, 
         "hidden_layer_dim":15, 
         "n_flow_layers":4, 
         "num_hidden_layers":1,
-        "learning_rate":1e-4, 
+        "learning_rate":1e-3, 
         "use_toeplitz":true
     }
 }
