@@ -13,14 +13,15 @@ import torch
 from context import flows, esn
 
 
-def plot_loss(train_loss_per_model, val_loss_per_model):
+def plot_loss(train_loss_per_model, val_loss_per_model, folder2savefigs):
     n_models, n_epochs = train_loss_per_model.shape
-    for model in range(n_models):
+    for model_idx in range(n_models):
         plt.figure()
-        plt.title("loss evol model %d" % model)
-        plt.plot(train_loss_per_model[model, :], label="train")
-        plt.plot(val_loss_per_model[model, :], label="val")
+        plt.title("loss evol model %d" % model_idx)
+        plt.plot(train_loss_per_model[model_idx, :], label="train")
+        plt.plot(val_loss_per_model[model_idx, :], label="val")
         plt.legend()
+        plt.savefig(folder2savefigs + "/loss" + str(model_idx) + ".png")
     return
 
 def compute_validation_loss(nf, esn_model, folder2load, n_val_batches):
@@ -64,8 +65,8 @@ seq_length = 10
 hidden_dim = 16
 n_flow_layers = 4
 
-n_epochs = 10
-learning_rate = 1e-5
+n_epochs = 100
+learning_rate = 1e-3
 
 
 models = [flows.NormalizingFlow(frame_dim, hidden_dim, 
@@ -105,14 +106,18 @@ for model_idx, nf in enumerate(models):
         
         print("training loss", train_loss)
         print("val_loss", val_loss)
-    
+        
+        # exiting loop if we overfit
+        if epoch > 0 and val_loss_evol[model_idx, epoch] > val_loss_evol[model_idx, epoch-1]:
+            break
+        
     model_filename = "trained_models/" + str(model_idx) + ".pt"
     torch.save(nf.state_dict(), model_filename)
     
 echo_state.save("trained_models")
 
-plot_loss(train_loss_evol, val_loss_evol)
-
+plot_loss(train_loss_evol, val_loss_evol, "results")
+plt.show()
 
     
     

@@ -7,7 +7,6 @@ Created on Fri Aug 27 12:31:08 2021
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 from sklearn.metrics import classification_report
 
@@ -65,5 +64,7 @@ for model_idx in range(n_models):
         n_predicted_batches += 1
 
 print(classification_report(true_labels.numpy(), predictions.numpy()))
-    
-print(predictions[500:560])    
+
+np.save("results/true_labels.npy", true_labels.numpy())
+np.save("results/predictions.npy", predictions.numpy()) 
+
