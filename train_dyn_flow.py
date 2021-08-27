@@ -21,7 +21,6 @@ import time
 
 def train_model(train_datafile, iclass, num_classes, classmap_file, config_file, splits_file, logfile_foldername = None, 
                 modelfile_foldername = None, expname_basefolder=None):
-
     datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
     
     train_class_inputfile = train_datafile.replace(".pkl", "_{}.pkl".format(iclass+1))
@@ -209,6 +208,8 @@ def main():
         train_model(train_datafile=train_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
                     splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername,
                     expname_basefolder=expname_basefolder)
+        
+        print("-"*100)
 
     sys.exit(0)
 

@@ -9,8 +9,10 @@ from torch import nn
 from lib.src import esn, flows
 from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
-from lib.utils.training_utils import load_model_from_weights, push_model, count_params, save_model
-
+from lib.utils.training_utils import push_model, count_params, save_model
+from sklearn.metrics import classification_report
+import json
+from lib.utils.data_utils import NDArrayEncoder
 
 class DynESN_gen_model(nn.Module):
 
@@ -63,13 +65,10 @@ class DynESN_gen_model(nn.Module):
 
     def predict_sequences(self, iclass, evalloader, mode="test", eval_logfile_path=None):
 
-
-        #TODO: Needs to be completed and tested
-        eval_running_loss = 0.0
-        eval_NLL_loss_epoch_sum = 0.0
-        print("----------------------------- Evaluation Begins -----------------------------\n")
-
+       
         num_models = len(self.list_of_models)
+
+        datafolder = "".join(eval_logfile_path.split("/")[i]+"/" for i in range(len(eval_logfile_path.split("/")) - 1)) # Get the datafolder
         # sequences has shape (seq_length, batch_size, frame_dim)
         #batch_size = sequences.shape[1]  
         #likelihoods_per_model = torch.zeros((num_models, batch_size))
@@ -83,10 +82,10 @@ class DynESN_gen_model(nn.Module):
             
         #    predictions = torch.argmax(likelihoods_per_model, dim=0)
 
-        if not eval_logfile_path is None or os.path.exists(eval_logfile_path) == False:
-            eval_logfile = "./log/class{}_{}.log".format(iclass, mode)
+        if eval_logfile_path is None:
+            eval_logfile = "./log/class{}_{}.log".format(iclass+1, mode)
         else:
-            eval_logfile = os.path.join(eval_logfile_path, "class{}_{}.log".format(iclass+1, mode))
+            eval_logfile = eval_logfile_path
 
         orig_stdout = sys.stdout
         f_tmp = open(eval_logfile, 'a')
@@ -95,11 +94,16 @@ class DynESN_gen_model(nn.Module):
         #NOTE: Make one more for loop for likelihood estimation
         llh_per_model_list = []
 
+        print("----------------------------- Evaluation Begins -----------------------------\n")
+        print("------------------------------ Evaluation begins --------------------------------- \n", file=orig_stdout)
+
         with torch.no_grad():
         
             for i, dyn_esn_flow_model in enumerate(self.list_of_models):
                 
                 dyn_esn_flow_model.eval()  
+                #eval_running_loss = 0.0
+                eval_NLL_loss_epoch_sum = 0.0
                 dyn_esn_flow_model_LL = []
                 
                 for j, eval_sequence_data in enumerate(evalloader):
@@ -114,16 +118,40 @@ class DynESN_gen_model(nn.Module):
                 
                 eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
                 print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
+                print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss), file=orig_stdout)
                 dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((1, -1))
                 llh_per_model_list.append(dyn_esn_model_llh)
             
             llh_all_models = torch.cat(llh_per_model_list, dim=0)
             predictions_all_models = torch.argmax(llh_all_models, dim=0) + 1
 
-        sys.stdout = orig_stdout
-        return predictions_all_models
-        
+        true_predictions = torch.empty(size=(len(evalloader.dataset),)).fill_(iclass+1) # Make a tensor containing the true labels
 
+        # Get the classification summary
+        print("Getting the classification summary for data corresponding to Class:{}".format(iclass+1))
+        eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=True, zero_division=0)
+        eval_summary["num_sequences"] = len(evalloader.dataset)
+        
+        sys.stdout = orig_stdout
+
+        orig_stdout = sys.stdout
+        eval_logfile_all = os.path.join(datafolder, "testing.log")
+        f_tmp = open(eval_logfile_all, 'a')
+        sys.stdout = f_tmp
+
+        print("-"*100)
+        print("-"*100, file=orig_stdout)
+        print("-"*100)
+        print("Accuracy for class:{}-{} data:{}".format(iclass+1, mode, eval_summary['accuracy']))
+        print("Accuracy for class:{}-{} data:{}".format(iclass+1, mode, eval_summary['accuracy']), file=orig_stdout)
+        #print(classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=False,  zero_division=0))
+
+        with open(os.path.join(datafolder, "class_{}_dyn_esn_model_gen_clsfcn_summary.json".format(iclass+1)), 'w') as f:
+            f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
+        
+        sys.stdout = orig_stdout
+        return predictions_all_models, true_predictions, eval_summary
+        
 class DynESN_flow(nn.Module):
 
     def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 

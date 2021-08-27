@@ -24,6 +24,7 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
 
     datafolder = "".join(eval_datafile.split("/")[i]+"/" for i in range(len(eval_datafile.split("/")) - 1)) # Get the datafolder
     
+    print("-"*100)
     eval_class_inputfile = eval_datafile.replace(".pkl", "_{}.pkl".format(iclass+1)) # For HMM, this 'datafile' is something like [train/test]_hmm.pkl
     print("Dataset: {}".format(eval_class_inputfile))
 
@@ -150,20 +151,9 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
                                         eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=options["train"]["n_epochs"])
 
     # Run the model training
-    model_predictions = dyn_esn_flow_gen.predict_sequences(iclass=iclass, evalloader=eval_dataloader, mode=dataset_type, eval_logfile_path=logfile_path)
-    true_predictions = torch.empty(size=(len(eval_custom_dataset),)).fill_(iclass+1) # Make a tensor containing the true labels
+    model_predictions, true_predictions, eval_summary = dyn_esn_flow_gen.predict_sequences(iclass=iclass, evalloader=eval_dataloader, mode=dataset_type, eval_logfile_path=logfile_path)
 
-    # Get the classification summary
-    print("Getting the classification summary for {}".format(eval_class_inputfile))
-    eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=True, zero_division=0)
-    eval_summary["num_sequences"] = len(eval_custom_dataset)
-    print("Accuracy for class:{}-{} data:{}".format(iclass+1, dataset_type, eval_summary['accuracy']))
-    #print(classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=False,  zero_division=0))
-
-    with open(os.path.join(logfile_foldername, "class_{}_dyn_esn_model_gen_clsfcn_summary.json".format(iclass+1)), 'w') as f:
-            f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
-
-    return None
+    return eval_summary, model_predictions, true_predictions
 
 def main():
 
@@ -203,11 +193,26 @@ def main():
     else:
         pass
     
-    for iclass in range(0, num_classes):
-        evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
-                    splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername, 
-                    expname_basefolder=expname_basefolder, noise_type=noise_type, dataset_type=dataset_type)
+    total_acc = 0.0
+    sum_of_weights = 0.0
 
+    for iclass in range(0, num_classes):
+        
+        eval_summary_iclass, model_preds_iclass, true_preds_iclass = evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, 
+                                                                                    classmap_file=classmap_file, config_file=config_file,
+                                                                                    splits_file=splits_file, logfile_foldername=logfile_foldername, 
+                                                                                    modelfile_foldername=modelfile_foldername, 
+                                                                                    expname_basefolder=expname_basefolder, noise_type=noise_type, 
+                                                                                    dataset_type=dataset_type)
+        
+        weight_iclass = sum(model_preds_iclass == true_preds_iclass).item() / len(true_preds_iclass)
+        total_acc += eval_summary_iclass['accuracy'] * weight_iclass
+        sum_of_weights += weight_iclass
+
+    total_acc = total_acc / sum_of_weights
+
+    print("-"*100)
+    print("Weighted accuracy of the overall model:{}".format(total_acc))
 
     sys.exit(0)
 
