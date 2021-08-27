@@ -57,6 +57,18 @@ class EchoStateNetwork(object):
             self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
         return self.h_esn
     
+    def save(self, folder_path):
+        torch.save(self.Wres, folder_path+"/reservoir.pt")
+        torch.save(self.Wfb, folder_path+"/feedback.pt")
+        return
+    
+    
+    def load(self, folder_path):
+        self.Wres = torch.load(folder_path+"/reservoir.pt")
+        self.Wfb = torch.load(folder_path+"/feedback.pt")
+        self.esn_dim, self.frame_dim = self.Wfb.shape
+        return self
+    
     
 def build_reservoir(esn_dim, conn_per_neur, spec_rad):
     """ Builds the reservoir matrix such that in each row there is the amount of conn_per_neur non zero random values.
