@@ -40,9 +40,8 @@ def create_length_mask(frame_instant, batch_size, true_lengths):
         length_mask = torch.ones((batch_size, 1))
     else:
         # frame instant +1 gives the number of frames visited (0 indexing)  
-        length_mask = 1 * (true_lengths >= (frame_instant+1)) 
+        length_mask = 1. * (true_lengths >= (frame_instant+1)) 
         length_mask = length_mask.view(batch_size, 1)
-        length_mask = length_mask.double()
     return length_mask
 
 def create_b_mask(frame_dim):
