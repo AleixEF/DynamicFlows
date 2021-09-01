@@ -57,7 +57,11 @@ def generate_and_save_dataset(output_data_folder, iclass, frame_dim, num_sequenc
         # reshape to delete the useless second dimension of a single channel
         sequences.append(single_seq.reshape((seq_length, frame_dim)))
     
-    sequences = np.array(sequences, dtype='object')
+    if min_seq_length == max_seq_length - 1:
+        sequences = np.array(sequences, dtype='float64')
+    else:
+        sequences = np.array(sequences, dtype='object')
+        
     train_sequences = sequences[tr_indices]
     val_sequences = sequences[val_indices]
     test_sequences = sequences[test_indices]
@@ -94,8 +98,8 @@ def main():
     frame_dim = args.frame_dim
     num_sequences = args.num_sequences
     
-    min_seq_length = 3
-    max_seq_length = 15
+    min_seq_length = 10#3
+    max_seq_length = 11#15
 
     #print(num_classes, output_data_folder, n_states, frame_dim)
     

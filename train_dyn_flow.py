@@ -230,6 +230,7 @@ def main():
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
         expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        #expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths/dyn_esn_flow_{}/".format(num_classes, noise_type)
     else:
         pass
     

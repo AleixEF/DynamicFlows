@@ -3,7 +3,7 @@
 
     "convg_monitor":{
         "tol":1e-2,
-        "max_iter":6
+        "max_iter":4
     },
 
     "train":
