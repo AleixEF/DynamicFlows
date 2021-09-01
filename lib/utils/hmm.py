@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import invgamma
+from scipy.stats import invgamma, multivariate_normal
 
 
 class GaussianHmm(object):
@@ -20,13 +20,34 @@ class GaussianHmm(object):
         # this data size is convenient for other libs like pytorch
         sequences = np.zeros((seq_length, n_sequences, self.frame_dim))
 
-        # one initial hidden state per sequence
+        # one hidden state per sequence at t=0
         hidden_states = np.random.choice(self.n_states, size=n_sequences,
                                          p=self.initial_state_prob)
-        for idx_seq in range(seq_length):
+        for frame_instant in range(seq_length):
+            sequences[frame_instant] = self.emit_frame(hidden_states)
             hidden_states = self.next_hidden_states(hidden_states)
-            sequences[idx_seq] = self.emit_frame(hidden_states)
         return sequences
+
+    def loglike_sequence(self, sequence):
+        # initial calculation at t=0
+        # shape (n_states, batch_size)
+        frame_prob = self.compute_emission_prob(sequence[0])
+
+        # shape (n_states, batch_size)
+        alpha_temp = frame_prob * self.initial_state_prob.reshape((self.n_states, 1))
+        c_coef = np.sum(alpha_temp, axis=0)  # shape batch_size
+        alpha_hat = alpha_temp / c_coef  # shape (n_states, batch_size)
+
+        logprob = np.log(c_coef)
+        # starting loop from t=1
+        for frame in sequence[1:]:
+            frame_prob = self.compute_emission_prob(frame)
+            alpha_temp = (self.a_trans.T @ alpha_hat) * frame_prob
+            c_coef = np.sum(alpha_temp, axis=0)
+            alpha_hat = alpha_temp / c_coef
+
+            logprob += np.log(c_coef)
+        return logprob
     
     def save(self, folder_path):
         np.save(folder_path+"/init_prob.npy", self.initial_state_prob)
@@ -41,6 +62,16 @@ class GaussianHmm(object):
         self.cov_emissions = np.load(folder_path+"/covariances.npy")                                     
         self.mean_emissions = np.load(folder_path+"/mean_emissions.npy")
         return self
+
+    def emission_expected_value(self, frame_instant):
+        prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
+            self.a_trans, frame_instant)  # array of shape n_states
+        # expected value = sum_{i=1}^N {\mu_i * P(S_t=i)}
+        # \mu_i is the gauss mean of size frame_dim and N is the num of states
+        expected_value = np.sum(
+            self.mean_emissions * prob_state_t.reshape(self.n_states, 1),
+            axis=0)
+        return expected_value
 
     def next_hidden_states(self, hidden_states_prev):
         # hidden_states_prev is a 1D array
@@ -59,18 +90,17 @@ class GaussianHmm(object):
             cov = self.cov_emissions[h_state]
             frame[idx_seq] = np.random.multivariate_normal(mean, cov)
         return frame
-    
-    def emission_expected_value(self, frame_instant):
-        prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
-            self.a_trans, frame_instant+1)  # array of shape n_states
-        
-        # expected value = sum_{i=1}^N {\mu_i * P(S_t=i)}
-        # \mu_i is the gauss mean of size frame_dim and N is the num of states
-        expected_value = np.sum(
-            self.mean_emissions * prob_state_t.reshape(self.n_states, 1), 
-            axis=0)
-        return expected_value
-        
+
+    def compute_emission_prob(self, frame_batch):
+        batch_size, frame_dim = frame_batch.shape
+        prob_per_hidden_state = np.zeros((self.n_states, batch_size))
+        for i in range(self.n_states):
+            prob_per_hidden_state[i] = multivariate_normal.pdf(
+                    x=frame_batch,
+                    mean=self.mean_emissions[i],
+                    cov=self.cov_emissions[i])
+        return prob_per_hidden_state
+
 
 def init_transition_matrices(n_states):
     dirichlet_params = np.random.uniform(size=n_states)
