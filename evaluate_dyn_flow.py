@@ -20,7 +20,7 @@ from sklearn.metrics import classification_report
 
 def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, splits_file, 
                 logfile_foldername = None, modelfile_foldername = None, expname_basefolder=None, 
-                noise_type="clean", dataset_type="test"):
+                noise_type="clean", dataset_type="test", epoch_ckpt_num=None):
 
     datafolder = "".join(eval_datafile.split("/")[i]+"/" for i in range(len(eval_datafile.split("/")) - 1)) # Get the datafolder
     
@@ -89,7 +89,7 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
     # data. Since the validation dataset requires all the training models (for each class of phonomes) to be created
     # first (to form the generative model classifier), so at test time, it can load the split files to from the 
     # dataloaders corresponding to that class
-
+    '''
     if splits_file is None or not os.path.isfile(splits_file):
         
         # Get indices to split the training_custom_dataset into training data and validation data
@@ -112,7 +112,7 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
         train_indices, val_indices= splits["train"], splits["val"]
 
         print(len(train_indices), len(val_indices))
-
+    '''
     # Creating a dataloader for training dataset, which will be used for learning model parameters
 
     if dataset_type.lower() == "test":
@@ -127,14 +127,14 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
         eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
                                         batch_size=options["eval"]["batch_size"],
                                         my_collate_fn=custom_collate_fn,
-                                        indices=val_indices)
+                                        indices=None)
     
     elif dataset_type.lower() == "train":
 
         eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
                                         batch_size=options["eval"]["batch_size"],
                                         my_collate_fn=custom_collate_fn,
-                                        indices=train_indices)
+                                        indices=None)
 
     #val_dataloader = get_dataloader(dataset=training_custom_dataset,
     #                                batch_size=options["train"]["eval_batch_size"],
@@ -146,9 +146,12 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu>0) else "cpu")
     print("Device Used:{}".format(device))
 
-    # Initialize the "Super class" Dyn_ESN_Gen_Model
+    # Initialize the "Super class" Dyn_ESN_Gen_Model,
+    # Current fix: provide epoch_ckpt_number = None, to load the bets / converged model files, else set the 
+    # epoch_ckpt_number as options["train"]["num_epochs"] to load the model saved at the last epoch.
+    #TODO: a better fix is required
     dyn_esn_flow_gen = DynESN_gen_model(full_modelfile_path=modelfile_path, options=options, device=device, num_classes=num_classes,
-                                        eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=options["train"]["n_epochs"])
+                                        eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=epoch_ckpt_num)
 
     # Run the model training
     model_predictions, true_predictions, eval_summary = dyn_esn_flow_gen.predict_sequences(iclass=iclass, evalloader=eval_dataloader, mode=dataset_type, eval_logfile_path=logfile_path)
@@ -169,6 +172,7 @@ def main():
     parser.add_argument("--expname_basefolder", help="Enter the basepath to save the results", type=str, default=None)
     parser.add_argument("--dataset_type", help="Enter the type of dataset (train / test / val)", type=str, default="test")
     parser.add_argument("--noise_type", help="Enter the type of noise, by default -- clean", type=str, default="clean")
+    parser.add_argument("--epoch_ckpt_number", help="Enter the type of noise, by default -- clean", type=int, default=None)
 
     args = parser.parse_args() 
     eval_datafile = args.eval_data
@@ -180,6 +184,7 @@ def main():
     expname_basefolder = args.expname_basefolder
     noise_type = args.noise_type
     dataset_type = args.dataset_type
+    epoch_ckpt_number = args.epoch_ckpt_number
 
     # Define the basepath for storing the logfiles
     logfile_foldername = "log"
@@ -203,7 +208,7 @@ def main():
                                                                                     splits_file=splits_file, logfile_foldername=logfile_foldername, 
                                                                                     modelfile_foldername=modelfile_foldername, 
                                                                                     expname_basefolder=expname_basefolder, noise_type=noise_type, 
-                                                                                    dataset_type=dataset_type)
+                                                                                    dataset_type=dataset_type, epoch_ckpt_num=epoch_ckpt_number)
         
         weight_iclass = sum(model_preds_iclass == true_preds_iclass).item() / len(true_preds_iclass)
         total_acc += eval_summary_iclass['accuracy'] * weight_iclass

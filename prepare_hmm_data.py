@@ -1,12 +1,15 @@
+from lib.utils.data_utils import norm_min_max
 import numpy as np
 import pickle as pkl
 import argparse
 import os
-from lib.utils.hmm import init_emission_means, init_diagonal_cov_matrices
+from lib.utils.hmm import init_emission_means, init_diagonal_cov_matrices, init_transition_matrices
 from lib.utils.hmm import GaussianHmm
 
-def generate_and_save_dataset(output_file, frame_dim,  num_sequences, 
+def generate_and_save_dataset(output_data_folder, iclass, frame_dim, num_sequences,
+                            tr_to_val_split, tr_to_test_split, 
                             n_states, mean_emissions, cov_emissions,
+                            init_start_prob, transition_matrix,
                             min_seq_length=2, max_seq_length=10):
                               
     """ Uses a random hmm to create a dataset. The dataset is
@@ -30,8 +33,22 @@ def generate_and_save_dataset(output_file, frame_dim,  num_sequences,
     each item.
 
     """
-    gauss_hmm = GaussianHmm(frame_dim, n_states, mean_emissions=mean_emissions, cov_emissions=cov_emissions)
+    
+    gauss_hmm = GaussianHmm(frame_dim, n_states, mean_emissions=mean_emissions, 
+                            cov_emissions=cov_emissions, init_start_prob=init_start_prob, a_trans=transition_matrix)
+    
+    num_training_val_sequences = int(tr_to_test_split*num_sequences)
+    num_training_sequences = int(tr_to_val_split * num_training_val_sequences)
+    num_validation_sequences = num_training_val_sequences - num_training_sequences
+    num_testing_sequences = num_sequences - num_training_sequences
+    
     sequences = []
+    
+    indices = np.random.permutation(num_sequences).tolist()
+    tr_indices = indices[:num_training_sequences]
+    val_indices = indices[num_training_sequences:num_training_sequences+num_validation_sequences]
+    test_indices = indices[num_training_sequences + num_validation_sequences:num_training_sequences + num_validation_sequences+num_testing_sequences]
+
     for _ in range(num_sequences):
         seq_length = np.random.randint(low=min_seq_length, high=max_seq_length)
         # has shape (seq_length, 1, frame_dim)
@@ -41,9 +58,22 @@ def generate_and_save_dataset(output_file, frame_dim,  num_sequences,
         sequences.append(single_seq.reshape((seq_length, frame_dim)))
     
     sequences = np.array(sequences, dtype='object')
-    with open(output_file, "wb") as f:
-        pkl.dump(sequences, f)
-    return sequences
+    train_sequences = sequences[tr_indices]
+    val_sequences = sequences[val_indices]
+    test_sequences = sequences[test_indices]
+    
+
+    print("Creating datasets for class-{}, saving them at {}".format(iclass, output_data_folder))
+    with open(os.path.join(output_data_folder, "train_hmm_{}.pkl".format(iclass)), "wb") as f1:
+        pkl.dump(train_sequences, f1)
+    
+    with open(os.path.join(output_data_folder, "val_hmm_{}.pkl".format(iclass)), "wb") as f2:
+        pkl.dump(val_sequences, f2)
+    
+    with open(os.path.join(output_data_folder, "test_hmm_{}.pkl".format(iclass)), "wb") as f3:
+        pkl.dump(test_sequences, f3)
+
+    return None
 
 def main():
 
@@ -63,8 +93,7 @@ def main():
     n_states = args.n_states
     frame_dim = args.frame_dim
     num_sequences = args.num_sequences
-    num_training_sequences = int(0.8*num_sequences)
-    num_testing_sequences = num_sequences - num_training_sequences
+    
     min_seq_length = 3
     max_seq_length = 15
 
@@ -77,8 +106,12 @@ def main():
 
     # Similarly, we assume that the covariance matrices are diagonal (for every class) from U[a, b]
     # where a2 and b2 were initially hardcoded as 1 and 5 respectively. NOTE: a2 and b2 must be positive
-    a2, b2 = 1.0, 2.0
+    a2, b2 = 1.0, 3.0
     cov_emissions_nclasses = np.zeros((num_classes, n_states, frame_dim, frame_dim))
+
+    # Transition matrices
+    init_start_prob_nclasses = np.zeros((num_classes, n_states))
+    transition_matrices_nclasses = np.zeros((num_classes, n_states, n_states))
 
     # Checking if output folder is present or not!
     if os.path.exists(output_data_folder) == False:
@@ -89,24 +122,29 @@ def main():
 
     # Create the list of training and testing files
     list_of_training_files = []
+    list_of_validation_files = []
     list_of_testing_files = []
 
     for i in range(num_classes):
 
         iclass = i+1
         tr_file_name = "train_hmm_{}.pkl".format(iclass)
+        val_file_name = "val_hmm_{}.pkl".format(iclass)
         te_file_name = "test_hmm_{}.pkl".format(iclass)
 
         list_of_training_files.append(os.path.join(output_data_folder, tr_file_name))
+        list_of_validation_files.append(os.path.join(output_data_folder, val_file_name))
         list_of_testing_files.append(os.path.join(output_data_folder, te_file_name))
 
     print("Training files to be stored at:\n{}".format(list_of_training_files))
+    print("Validation files to be stored at:\n{}".format(list_of_validation_files))
     print("Testing files to be stored at:\n{}".format(list_of_testing_files))
 
     ## Initialize the mean emissions
     for i in range(num_classes):
         mean_emissions_nclasses[i] = init_emission_means(n_states=n_states, frame_dim=frame_dim)
         cov_emissions_nclasses[i] = init_diagonal_cov_matrices(n_states=n_states, frame_dim=frame_dim)
+        init_start_prob_nclasses[i], transition_matrices_nclasses[i] = init_transition_matrices(n_states=n_states)
 
     #print("Mean emissions:")
     #print(mean_emissions_nclasses)
@@ -117,34 +155,20 @@ def main():
     for i in range(num_classes):
 
         train_output_file = list_of_training_files[i] # Get the training data file
+        val_output_file = list_of_validation_files[i] # Get the validation data file
         test_output_file = list_of_testing_files[i] # Get the testing data file
         
         # Generate and save the training data file
         #NOTE: We use the same mean vector and diagonal cov. matrix for generating training
         # and testing data for the same class. Only difference is in the number of sequences
 
-        if os.path.isfile(train_output_file) == False:
-            print("{} for class:{} does not exists ! Creating ...".format(train_output_file, i+1))
-            generate_and_save_dataset(output_file=train_output_file, frame_dim=frame_dim,
-                                    num_sequences=num_training_sequences, n_states=n_states,
-                                    mean_emissions=mean_emissions_nclasses[i], 
-                                    cov_emissions=cov_emissions_nclasses[i],
-                                    min_seq_length=min_seq_length, max_seq_length=max_seq_length
-                                    )
-        else:
-            print("{} for class:{} already exists !".format(train_output_file, i+1))
-        
-        # Generate and save the test data file
-        if os.path.isfile(test_output_file) == False:
-            print("{} for class:{} does not exists ! Creating ...".format(test_output_file, i+1))
-            generate_and_save_dataset(output_file=test_output_file, frame_dim=frame_dim,
-                                    num_sequences=num_testing_sequences, n_states=n_states,
-                                    mean_emissions=mean_emissions_nclasses[i], 
-                                    cov_emissions=cov_emissions_nclasses[i],
-                                    min_seq_length=min_seq_length, max_seq_length=max_seq_length
-                                    )
-        else:
-            print("{} for class:{} already exists !".format(test_output_file, i+1))
+        generate_and_save_dataset(output_data_folder=output_data_folder, iclass=i+1, frame_dim=frame_dim,
+                                num_sequences=num_sequences, tr_to_val_split=0.75, tr_to_test_split=0.8, n_states=n_states,
+                                mean_emissions=mean_emissions_nclasses[i],
+                                cov_emissions=cov_emissions_nclasses[i],
+                                init_start_prob=init_start_prob_nclasses[i],
+                                transition_matrix=transition_matrices_nclasses[i],
+                                min_seq_length=min_seq_length, max_seq_length=max_seq_length)
 
     return None
 

@@ -8,6 +8,7 @@ author: Aleix Espuna Fontcuberta
 
 import numpy as np
 import torch
+import os
 
 
 class EchoStateNetwork(object):
@@ -56,6 +57,22 @@ class EchoStateNetwork(object):
         self.h_esn = torch.tanh(
             self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
         return self.h_esn
+
+    def save(self, foldername, filename):
+
+        esn_encoding_params = {}
+        esn_encoding_params["W_res"] = self.Wres
+        esn_encoding_params["W_fb"] = self.Wfb
+        torch.save(esn_encoding_params, os.path.join(foldername, filename))
+        #torch.save(self.Wfb, folder_path+"/feedback_mat_{}.pt".format(iclass))
+        return
+    
+    
+    def load(self, full_filename):
+        esn_encoded_params = torch.load(full_filename)
+        self.Wfb, self.Wres = esn_encoded_params["W_fb"], esn_encoded_params["W_res"]
+        self.esn_dim, self.frame_dim = self.Wfb.shape
+        return self
     
     
 def build_reservoir(esn_dim, conn_per_neur, spec_rad):

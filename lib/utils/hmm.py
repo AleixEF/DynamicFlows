@@ -4,13 +4,15 @@ from numpy.core.fromnumeric import mean
 from scipy.stats import invgamma
 
 class GaussianHmm(object):
-    def __init__(self, frame_dim, n_states=3, mean_emissions=None, cov_emissions=None):
+    def __init__(self, frame_dim, n_states=3, mean_emissions=None, cov_emissions=None, init_start_prob=None, a_trans=None):
 
         self.n_states = n_states
         self.frame_dim = frame_dim
 
         # Params init
-        self.initial_state_prob, self.a_trans = init_transition_matrices(n_states)
+        #self.initial_state_prob, self.a_trans = init_transition_matrices(n_states)
+        self.initial_state_prob = init_start_prob
+        self.a_trans = a_trans
 
         # shape (n_states, frame_dim)
         if mean_emissions is None:

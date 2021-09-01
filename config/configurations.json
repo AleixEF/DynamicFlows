@@ -1,9 +1,14 @@
 {   
     "set_mul_gpu":true,
 
+    "convg_monitor":{
+        "tol":1e-2,
+        "max_iter":6
+    },
+
     "train":
     {
-        "n_epochs": 10,
+        "n_epochs": 30,
         "batch_size": 128,
         "tr_to_val_split":1.0
     },
@@ -11,7 +16,7 @@
     "eval":
     {
         "batch_size": 128
-        
+
     },
 
     "dyn_esn_flow":

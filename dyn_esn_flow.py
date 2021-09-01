@@ -9,7 +9,7 @@ from torch import nn
 from lib.src import esn, flows
 from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
-from lib.utils.training_utils import push_model, count_params, save_model
+from lib.utils.training_utils import push_model, count_params, save_model, ConvergenceMonitor
 from sklearn.metrics import classification_report
 import json
 from lib.utils.data_utils import NDArrayEncoder
@@ -23,9 +23,19 @@ class DynESN_gen_model(nn.Module):
         self.device = device
         self.num_classes = num_classes
         self.eval_batch_size = eval_batch_size
+        self.full_modelfile_path = full_modelfile_path
+        self.epoch_ckpt_number = epoch_ckpt_number
 
-        self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(i+1, epoch_ckpt_number)) 
-                    for i in range(num_classes)]
+        if not epoch_ckpt_number is None:
+            self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(i+1, epoch_ckpt_number)) 
+                        for i in range(num_classes)]
+            self.list_of_esn_param_files = [os.path.join(full_modelfile_path, "class_{}_esn_encoding_params_epoch_{}.pt".format(i+1, epoch_ckpt_number)) 
+                        for i in range(num_classes)]
+        else:
+            self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_dyn_esn_flow_ckpt_converged.pt".format(i+1)) 
+                        for i in range(num_classes)]
+            self.list_of_esn_param_files = [os.path.join(full_modelfile_path, "class_{}_esn_encoding_params_converged.pt".format(i+1)) 
+                        for i in range(num_classes)]
 
         self.check_model_files_exist() # Check if all the model files are present at the correct locations
 
@@ -34,28 +44,36 @@ class DynESN_gen_model(nn.Module):
 
     def check_model_files_exist(self):
 
-        for i, model_file in enumerate(self.list_of_model_files):
-            assert os.path.isfile(model_file) == True, "{} is not present!!".format(model_file)
+        for i in range(len(self.list_of_model_files)):
+            assert os.path.isfile(self.list_of_model_files[i]) == True, "{} is not present!!".format(self.list_of_model_files[i])
+            assert os.path.isfile(self.list_of_esn_param_files[i]) == True, "{} is not present!!".format(self.list_of_esn_param_files[i])
 
         return None
     
     def create_list_of_models(self):
 
         list_of_models = []
-        for i, model_file in enumerate(self.list_of_model_files):
+        for iclass in range(len(self.list_of_model_files)):
+            
+            model_file = self.list_of_model_files[iclass]
+            esn_model_file = self.list_of_esn_param_files[iclass]
 
-            print("Loading model for class : {}".format(i+1))
+            print("Loading model for class : {} found at:{}".format(iclass+1, model_file))
             dyn_esn_flow_model = DynESN_flow(num_categories=self.num_classes,
                             batch_size=self.options["train"]["batch_size"],
                             device=self.device,
                             **self.options["dyn_esn_flow"])
 
+            # Load the normalizing flow network parameters
             dyn_esn_flow_model.load_state_dict(torch.load(model_file))
+            
+            # Load the ESN related matrices
+            print("Loading ESN model for class : {} found at:{}".format(iclass+1, esn_model_file))
+            dyn_esn_flow_model.esn_model.load(full_filename=esn_model_file)
 
             list_of_models.append(dyn_esn_flow_model)
 
         return list_of_models
-
 
     #def infer(self):
     #    return None
@@ -202,12 +220,18 @@ class DynESN_flow(nn.Module):
         return loglike_sequence
         
 
-def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_path=None, modelfile_path=None, 
+def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
             tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed
     optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.lr)
     lr_scheduler = scheduler.StepLR(optimizer=optimizer, step_size=nepochs//3, gamma=0.9)
+
+    # Creating an object of ConvergenceMonitor for tracking the relative change 
+    # in training loss (and enforcing a stopping criterion)
+    model_monitor = ConvergenceMonitor(tol=options["convg_monitor"]["tol"], 
+                                    max_epochs=options["convg_monitor"]["max_iter"]
+                                    )
 
     # Measure epoch time
     starttime = timer()
@@ -236,6 +260,7 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
     sys.stdout = f_tmp
 
     tr_losses = [] # Empty list to store NLL for every epoch to plot it later on
+    val_losses = [] # Empty list to store NLL for every epoch to plot it later on
 
     print("------------------------------ Training begins --------------------------------- \n")
     print("------------------------------ Training begins --------------------------------- \n", file=orig_stdout)
@@ -254,6 +279,8 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
             
             tr_NLL_epoch_sum = 0.0
             tr_NLL_running_loss = 0.0
+            val_NLL_epoch_sum = 0.0
+            val_NLL_running_loss = 0.0
 
             for i, tr_sequence_data in enumerate(trainloader):
                 
@@ -275,26 +302,49 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
                     #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20))
                     #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20), file=orig_stdout)
                     tr_NLL_running_loss = 0.0
-
-
-            # Updating the learning rate scheduler 
-            lr_scheduler.step()
-
-            # Loss at the end of each epoch, averaged out by the number of batches in the training dataloader
-            tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)
             
             # Measure wallclock time
             endtime = timer()
             time_elapsed = endtime - starttime
-        
-            # Displaying loss every few epochs
-            if tr_verbose == True and (((epoch + 1) % 5) == 0 or epoch == 0):
-                
-                print("Epoch: {}/{}, Training MSE Loss:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
-                nepochs, tr_NLL_epoch, time_elapsed), file=orig_stdout)
 
-                print("Epoch: {}/{}, Training MSE Loss:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
-                nepochs, tr_NLL_epoch, time_elapsed))
+            with torch.no_grad():
+
+                for i, val_sequence_data in enumerate(valloader):
+                
+                    val_sequence_batch, val_sequence_batch_lengths = val_sequence_data
+                    val_sequence_batch = Variable(val_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+                    val_sequence_batch_lengths = Variable(val_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
+                    val_loglike_batch = dyn_esn_flow_model.forward(val_sequence_batch, val_sequence_batch_lengths)
+                    val_NLL_loss_batch = -torch.mean(val_loglike_batch)
+
+                    # Accumulate statistics
+                    val_NLL_epoch_sum += val_NLL_loss_batch.item()
+                    val_NLL_running_loss += val_NLL_loss_batch.item()
+                    
+                    # print every 10 mini-batches, every epoch
+                    if i % 20 == 19 and ((epoch + 1) % 1 == 0):  
+                        #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20))
+                        #print("Epoch: {}/{}, Batch index: {}, Training loss: {}".format(epoch+1, nepochs, i+1, tr_NLL_running_loss / 20), file=orig_stdout)
+                        val_NLL_running_loss = 0.0
+
+            # Updating the learning rate scheduler 
+            #lr_scheduler.step()
+
+            # Loss at the end of each epoch, averaged out by the number of batches in the training dataloader
+            tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)
+            val_NLL_epoch = val_NLL_epoch_sum / len(valloader)
+            
+            # Record validation loss
+            model_monitor.record(val_NLL_epoch)
+
+            # Displaying loss every few epochs
+            if tr_verbose == True and (((epoch + 1) % 1) == 0 or epoch == 0):
+                
+                print("Epoch: {}/{}, Training NLL:{:.6f}, Validation NLL:{:.6f},  Time_Elapsed:{:.4f} secs".format(epoch+1, 
+                nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed), file=orig_stdout)
+
+                print("Epoch: {}/{}, Training NLL:{:.6f}, Validation NLL:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
+                nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed))
             
             # Checkpointing the model every few  epochs
             if (((epoch + 1) % 5) == 0 or epoch == 0) and save_checkpoints == "all": 
@@ -307,6 +357,14 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
 
             # Saving the losses 
             tr_losses.append(tr_NLL_epoch)
+            val_losses.append(val_NLL_epoch)
+
+            # Check monitor flag
+            if model_monitor.monitor(epoch=epoch+1) == True:
+                print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1))
+                print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1), file=orig_stdout)
+                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_converged.pt".format(iclass+1))
+                break
 
     except KeyboardInterrupt:
 
@@ -314,10 +372,19 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, logfile_pat
         print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
         save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
     
+    # Saving the ESN encoding parameters as well!
+    print("Saving ESN model parameters at Epoch:{}".format(epoch+1))
+    print("Saving ESN model parameters at Epoch:{}".format(epoch+1), file=orig_stdout)
+
+    if model_monitor.monitor(epoch=epoch+1) == False:
+        dyn_esn_flow_model.esn_model.save(foldername=modelfile_path, filename="class_{}_esn_encoding_params_epoch_{}.pt".format(iclass+1, epoch+1))
+    else:
+        dyn_esn_flow_model.esn_model.save(foldername=modelfile_path, filename="class_{}_esn_encoding_params_converged.pt".format(iclass+1))
+
     # Restoring the original std out pointer
     sys.stdout = orig_stdout
 
-    return tr_losses, dyn_esn_flow_model
+    return tr_losses, val_losses, dyn_esn_flow_model
 
 '''
 def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader, mode="test", eval_logfile_path=None):

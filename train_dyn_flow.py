@@ -6,6 +6,7 @@ from torch import nn
 import os
 import sys
 from parse import parse
+import matplotlib.pyplot as plt
 import argparse
 import pickle as pkl
 import torch
@@ -19,13 +20,16 @@ from dyn_esn_flow import DynESN_flow, train
 from lib.utils.training_utils import create_log_and_model_folders
 import time
 
-def train_model(train_datafile, iclass, num_classes, classmap_file, config_file, splits_file, logfile_foldername = None, 
+def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, splits_file, logfile_foldername = None, 
                 modelfile_foldername = None, expname_basefolder=None):
     datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
     
     train_class_inputfile = train_datafile.replace(".pkl", "_{}.pkl".format(iclass+1))
+    val_class_inputfile = val_datafile.replace(".pkl", "_{}.pkl".format(iclass+1))
 
-    print("Dataset: {}".format(train_class_inputfile))
+    print("-"*100)
+    print("Training Dataset: {}".format(train_class_inputfile))
+    print("Validation Dataset: {}".format(val_class_inputfile))
 
     assert os.path.isfile(classmap_file) == True, "Class map not present, kindly run prepare_data.py" 
     assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
@@ -51,22 +55,37 @@ def train_model(train_datafile, iclass, num_classes, classmap_file, config_file,
 
     # Load the dataset
     training_dataset = pkl.load(open(train_class_inputfile, 'rb'))
+    validation_dataset = pkl.load(open(val_class_inputfile, 'rb'))
     
     # Get a list of sequence lengths
-    list_of_sequence_lengths = [x.shape[0] for x in training_dataset]
+    list_of_tr_sequence_lengths = [x.shape[0] for x in training_dataset]
     
     # Get the maximum length of the sequence, shorter sequences will be zero-padded to this length
-    max_seq_len_ = max(list_of_sequence_lengths)
+    tr_max_seq_len_ = max(list_of_tr_sequence_lengths)
 
     # Get the padded training dataset
-    training_dataset_padded = pad_data(training_dataset, max_seq_len_)
+    training_dataset_padded = pad_data(training_dataset, tr_max_seq_len_)
+
+    # Get a list of sequence lengths
+    list_of_val_sequence_lengths = [x.shape[0] for x in validation_dataset]
+    
+    # Get the maximum length of the sequence, shorter sequences will be zero-padded to this length
+    val_max_seq_len_ = max(list_of_val_sequence_lengths)
+
+    # Get the padded training dataset
+    validation_dataset_padded = pad_data(validation_dataset, val_max_seq_len_)
+
 
     # `training_custom_dataset` is an object of the Dataset class in torch, that takes 
     # the padded training dataset, actual sequence lengths and device,
     # and this returns a custom formatted dataset from which batches can be extracted using
     # a custom dataloader
     training_custom_dataset = CustomSequenceDataset(xtrain=training_dataset_padded,
-                                                        lengths=list_of_sequence_lengths,
+                                                        lengths=list_of_tr_sequence_lengths,
+                                                        device=device)
+    
+    validation_custom_dataset = CustomSequenceDataset(xtrain=validation_dataset_padded,
+                                                        lengths=list_of_val_sequence_lengths,
                                                         device=device)
 
     # Get indices to split the training_custom_dataset into training data and validation data
@@ -87,6 +106,7 @@ def train_model(train_datafile, iclass, num_classes, classmap_file, config_file,
     # data. Since the validation dataset requires all the training models (for each class of phonomes) to be created
     # first (to form the generative model classifier), so at test time, it can load the split files to from the 
     # dataloaders corresponding to that class
+    '''
     if options["train"]["tr_to_val_split"] != 1.0:
 
         if splits_file is None or not os.path.isfile(splits_file):
@@ -125,11 +145,16 @@ def train_model(train_datafile, iclass, num_classes, classmap_file, config_file,
                                             batch_size=options["train"]["batch_size"],
                                             my_collate_fn=custom_collate_fn,
                                             indices=None)
-
-    #val_dataloader = get_dataloader(dataset=training_custom_dataset,
-    #                                batch_size=options["train"]["eval_batch_size"],
-    #                                my_collate_fn=custom_collate_fn,
-    #                                indices=val_indices)
+    '''
+    # Creating a dataloader for training dataset, which will be used for learning model parameters
+    training_dataloader = get_dataloader(dataset=training_custom_dataset,
+                                        batch_size=options["train"]["batch_size"],
+                                        my_collate_fn=custom_collate_fn,
+                                        indices=None)
+    val_dataloader = get_dataloader(dataset=validation_custom_dataset,
+                                    batch_size=options["eval"]["batch_size"],
+                                    my_collate_fn=custom_collate_fn,
+                                    indices=None)
 
     # Get the device
     ngpu = 1 # Comment this out if you want to run on cpu and the next line just set device to "cpu"
@@ -147,11 +172,15 @@ def train_model(train_datafile, iclass, num_classes, classmap_file, config_file,
     os.makedirs(plot_dir_per_class, exist_ok=True)
 
     # Run the model training
-    tr_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass, nepochs=options["train"]["n_epochs"],
-                                        trainloader=training_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
+    tr_losses, val_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass, nepochs=options["train"]["n_epochs"],
+                                        trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
                                         tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
-    #if tr_verbose == True:
-    #    plot_losses(tr_losses=tr_losses, val_losses=val_losses, logscale=False)
+    if tr_verbose == True:
+        plt.figure()
+        plt.plot(tr_losses, label="Training NLL")
+        plt.plot(val_losses, label="Validation NLL")
+        plt.legend()
+        plt.savefig(os.path.join(plot_dir_per_class, "tr_val_NLL_class_{}.pdf".format(iclass+1)))
 
     if not tr_losses is None:
         losses_model = {}
@@ -168,6 +197,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Enter relevant arguments for training one Dynamic ESN-Based Normalizing flow model")
     parser.add_argument("--train_data", help="Enter the full path to the training dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
+    parser.add_argument("--val_data", help="Enter the full path to the validation dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
     parser.add_argument("--num_classes", help="Enter the number of classes", type=int)
     parser.add_argument("--class_index", help="Enter the class index (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=int)
     #parser.add_argument("--class_indices", help="Array of class indices (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=list)
@@ -179,6 +209,7 @@ def main():
 
     args = parser.parse_args() 
     train_datafile = args.train_data
+    val_datafile = args.val_data
     num_classes = args.num_classes
     iclass = args.class_index
     #iclass_arr = args.class_indices
@@ -205,7 +236,7 @@ def main():
     for iclass in range(0, num_classes):
 
         #iclass = int(iclass)
-        train_model(train_datafile=train_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
+        train_model(train_datafile=train_datafile, val_datafile=val_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
                     splits_file=splits_file, logfile_foldername=logfile_foldername, modelfile_foldername=modelfile_foldername,
                     expname_basefolder=expname_basefolder)
         
