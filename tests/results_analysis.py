@@ -23,8 +23,20 @@ nf_prec, nf_recall, nf_fscore, _ = precision_recall_fscore_support(
 hmm_acc = np.sum(true_labels==hmm_predictions) / true_labels.size
 nf_acc = np.sum(true_labels==nf_predictions) / true_labels.size
 
-print(nf_prec)
-print(hmm_prec)
+np.set_printoptions(precision=3)
+print("hmm prec", hmm_prec)
+print("nf prec", nf_prec)
+print()
+print("hmm recall", hmm_recall)
+print("nf recall", nf_recall)
+print()
+print("hmm", hmm_acc)
+print("nf", nf_acc)
 
-print(nf_acc)
-print(hmm_acc)
+n_classes = np.unique(true_labels).size
+
+for i in range(n_classes):
+    print(r"\hline")
+    print(i, "&", "%.3f" % nf_prec[i], "&", "%.3f" % hmm_prec[i], "&", "%.3f" % nf_recall[i], 
+          "&", "%.3f" % hmm_recall[i], r"\\", "\n")
+    
