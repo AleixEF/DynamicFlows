@@ -34,7 +34,8 @@ def create_length_mask(frame_instant, batch_size, true_lengths):
 
     returns length_mask: binary tensor of shape (batch_size, 1)
     An element of length mask is 0 when the time instant exceeds the 
-    corresponding true sequence length 
+    corresponding true sequence length. If true_lengths is None, we assume 
+    all sequences have the maximum length.
     """
     if true_lengths is None:
         length_mask = torch.ones((batch_size, 1))
