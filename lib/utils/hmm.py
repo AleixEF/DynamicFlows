@@ -48,20 +48,6 @@ class GaussianHmm(object):
 
             logprob += np.log(c_coef)
         return logprob
-    
-    def save(self, folder_path):
-        np.save(folder_path+"/init_prob.npy", self.initial_state_prob)
-        np.save(folder_path+"/a_trans.npy", self.a_trans)
-        np.save(folder_path+"/covariances.npy", self.cov_emissions)
-        np.save(folder_path+"/mean_emissions.npy", self.mean_emissions)
-        return
-
-    def load(self, folder_path):
-        self.initial_state_prob = np.load(folder_path+"/init_prob.npy")
-        self.a_trans = np.load(folder_path+"/a_trans.npy")
-        self.cov_emissions = np.load(folder_path+"/covariances.npy")                                     
-        self.mean_emissions = np.load(folder_path+"/mean_emissions.npy")
-        return self
 
     def emission_expected_value(self, frame_instant):
         prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
