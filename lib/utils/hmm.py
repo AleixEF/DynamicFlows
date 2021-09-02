@@ -48,20 +48,6 @@ class GaussianHmm(object):
 
             logprob += np.log(c_coef)
         return logprob
-    
-    def save(self, folder_path):
-        np.save(folder_path+"/init_prob.npy", self.initial_state_prob)
-        np.save(folder_path+"/a_trans.npy", self.a_trans)
-        np.save(folder_path+"/covariances.npy", self.cov_emissions)
-        np.save(folder_path+"/mean_emissions.npy", self.mean_emissions)
-        return
-
-    def load(self, folder_path):
-        self.initial_state_prob = np.load(folder_path+"/init_prob.npy")
-        self.a_trans = np.load(folder_path+"/a_trans.npy")
-        self.cov_emissions = np.load(folder_path+"/covariances.npy")                                     
-        self.mean_emissions = np.load(folder_path+"/mean_emissions.npy")
-        return self
 
     def emission_expected_value(self, frame_instant):
         prob_state_t = self.initial_state_prob @ np.linalg.matrix_power(
@@ -113,17 +99,17 @@ def init_transition_matrices(n_states):
     return init_state_prob, a_trans
 
 
-def init_emission_means(n_states, frame_dim, l_lim=-5, u_lim=5):
+def init_emission_means(n_states, frame_dim):
     emission_means = np.zeros((n_states, frame_dim))
-    locs = np.random.uniform(low=l_lim, high=u_lim, size=n_states)
+    locs = np.random.uniform(low=-5, high=5, size=n_states)
     for i in range(n_states):
         emission_means[i] = np.random.normal(loc=locs[i], size=frame_dim)
     return emission_means
 
 
-def init_diagonal_cov_matrices(n_states, frame_dim, l_lim=1, u_lim=2):
+def init_diagonal_cov_matrices(n_states, frame_dim):
     cov_matrix = np.zeros((n_states, frame_dim, frame_dim))
-    inv_gamma_params = np.random.uniform(low=l_lim, high=u_lim , size=n_states)
+    inv_gamma_params = np.random.uniform(low=1, high=5 , size=n_states)
     for i_state, gamma_param in enumerate(inv_gamma_params):
         diagonal = np.abs(invgamma.rvs(gamma_param, size=frame_dim))
         cov_matrix[i_state] = np.diag(diagonal)
