@@ -1,7 +1,4 @@
-from operator import ne
-from numpy.core.numeric import full
 import torch
-import numpy as np
 import os
 import sys
 from parse import parse
@@ -10,23 +7,22 @@ import pickle as pkl
 import torch
 import json
 import numpy as np
-from torch.utils import data
-from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader, load_splits_file
-from lib.utils.data_utils import custom_collate_fn, obtain_tr_val_idx, create_splits_file_name
+from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
+from lib.utils.data_utils import custom_collate_fn
 from lib.utils.data_utils import NDArrayEncoder
 from dyn_esn_flow import DynESN_gen_model
 from lib.utils.training_utils import create_log_and_model_folders
-from sklearn.metrics import classification_report
 
-def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, splits_file, 
-                logfile_foldername = None, modelfile_foldername = None, expname_basefolder=None, 
+def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, 
+                logfile_path = None, modelfile_path = None, expname_basefolder=None, 
                 noise_type="clean", dataset_type="test", epoch_ckpt_num=None):
 
     datafolder = "".join(eval_datafile.split("/")[i]+"/" for i in range(len(eval_datafile.split("/")) - 1)) # Get the datafolder
     
     print("-"*100)
-    eval_class_inputfile = eval_datafile.replace(".pkl", "_{}.pkl".format(iclass+1)) # For HMM, this 'datafile' is something like [train/test]_hmm.pkl
-    print("Dataset: {}".format(eval_class_inputfile))
+    if noise_type == "clean":
+        eval_class_inputfile = eval_datafile.replace(".pkl", "_{}.pkl".format(iclass+1)) # For HMM, this 'datafile' is something like [train/test]_hmm.pkl
+        print("Dataset: {}".format(eval_class_inputfile))
 
     assert os.path.isfile(classmap_file) == True, "Class map not present, kindly run prepare_data.py" 
     assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
@@ -70,76 +66,17 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
                                                 lengths=list_of_sequence_lengths,
                                                 device=device)
 
-    # Get indices to split the training_custom_dataset into training data and validation data
-    #train_indices, val_indices = obtain_tr_val_idx(dataset=training_custom_dataset,
-    #                                                        tr_to_val_split=options["train"]["tr_to_val_split"])
-
-    # Get the log and model file paths
-    logfile_path, modelfile_path = create_log_and_model_folders(class_index=iclass,
-                                                                num_classes=num_classes,
-                                                                logfile_foldername=logfile_foldername,
-                                                                modelfile_foldername=modelfile_foldername,
-                                                                model_name="dyn_esn_flow",
-                                                                expname_basefolder=expname_basefolder,
-                                                                logfile_type="testing"
-                                                                )
-
     # Creating and saving training and validation indices for each dataset corresponding to a particular 
     # phoneme class. The training indices are to be used immediately to create a DataLoader object for the training
     # data. Since the validation dataset requires all the training models (for each class of phonomes) to be created
     # first (to form the generative model classifier), so at test time, it can load the split files to from the 
     # dataloaders corresponding to that class
-    '''
-    if splits_file is None or not os.path.isfile(splits_file):
-        
-        # Get indices to split the training_custom_dataset into training data and validation data
-        train_indices, val_indices = obtain_tr_val_idx(tr_and_val_dataset=eval_custom_dataset,
-                                                        tr_to_val_split=options["train"]["tr_to_val_split"])
-        
-        print(len(train_indices), len(val_indices))
-        splits = {}
-        splits["train"] = train_indices
-        splits["val"] = val_indices
-        splits_file_name = create_splits_file_name(dataset_filename=eval_class_inputfile,
-                                                    splits_filename=splits_file,
-                                                    num_classes=num_classes)
 
-        with open(os.path.join(datafolder, splits_file_name), 'wb') as handle:
-            pkl.dump(splits, handle, protocol=pkl.HIGHEST_PROTOCOL)
-    else:
-        print("Loading the splits file from {}".format(splits_file))
-        splits = load_splits_file(splits_filename=splits_file)
-        train_indices, val_indices= splits["train"], splits["val"]
-
-        print(len(train_indices), len(val_indices))
-    '''
-    # Creating a dataloader for training dataset, which will be used for learning model parameters
-
-    if dataset_type.lower() == "test":
-        
-        eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
-                                        batch_size=options["eval"]["batch_size"],
-                                        my_collate_fn=custom_collate_fn,
-                                        indices=None)
-
-    elif dataset_type.lower() == "val":
-
-        eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
-                                        batch_size=options["eval"]["batch_size"],
-                                        my_collate_fn=custom_collate_fn,
-                                        indices=None)
-    
-    elif dataset_type.lower() == "train":
-
-        eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
-                                        batch_size=options["eval"]["batch_size"],
-                                        my_collate_fn=custom_collate_fn,
-                                        indices=None)
-
-    #val_dataloader = get_dataloader(dataset=training_custom_dataset,
-    #                                batch_size=options["train"]["eval_batch_size"],
-    #                                my_collate_fn=custom_collate_fn,
-    #                                indices=val_indices)
+    # Creating a dataloader for evaluation dataset, which will be used for learning model parameters
+    eval_dataloader = get_dataloader(dataset=eval_custom_dataset,
+                                    batch_size=options["eval"]["batch_size"],
+                                    my_collate_fn=custom_collate_fn,
+                                    indices=None)
 
     # Get the device
     ngpu = 1 # Comment this out if you want to run on cpu and the next line just set device to "cpu"
@@ -149,14 +86,18 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
     # Initialize the "Super class" Dyn_ESN_Gen_Model,
     # Current fix: provide epoch_ckpt_number = None, to load the bets / converged model files, else set the 
     # epoch_ckpt_number as options["train"]["num_epochs"] to load the model saved at the last epoch.
-    #TODO: a better fix is required
+    
     dyn_esn_flow_gen = DynESN_gen_model(full_modelfile_path=modelfile_path, options=options, device=device, num_classes=num_classes,
                                         eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=epoch_ckpt_num)
 
     # Run the model training
-    model_predictions, true_predictions, eval_summary = dyn_esn_flow_gen.predict_sequences(iclass=iclass, evalloader=eval_dataloader, mode=dataset_type, eval_logfile_path=logfile_path)
+    model_predictions, true_predictions, eval_summary, eval_logfile_all = dyn_esn_flow_gen.predict_sequences(class_number=iclass+1, 
+                                                                                                        evalloader=eval_dataloader, 
+                                                                                                        mode=dataset_type, 
+                                                                                                        eval_logfile_path=logfile_path
+                                                                                                        )
 
-    return eval_summary, model_predictions, true_predictions
+    return eval_summary, model_predictions, true_predictions, eval_logfile_all
 
 def main():
 
@@ -192,10 +133,21 @@ def main():
     # Define the basepath for storing the modelfiles
     modelfile_foldername = "models"
 
+    # Get the name of the log file and full path to store the final saved model
+    # Get the log and model file paths
+    logfile_path, modelfile_path = create_log_and_model_folders(class_index=iclass,
+                                                                num_classes=num_classes,
+                                                                logfile_foldername=logfile_foldername,
+                                                                modelfile_foldername=modelfile_foldername,
+                                                                model_name="dyn_esn_flow",
+                                                                expname_basefolder=expname_basefolder,
+                                                                logfile_path="testing"
+                                                                )
+
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
-        expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
-        #expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths/dyn_esn_flow_{}/".format(num_classes, noise_type)
     else:
         pass
     
@@ -203,13 +155,12 @@ def main():
     sum_of_weights = 0.0
 
     for iclass in range(0, num_classes):
-        
-        eval_summary_iclass, model_preds_iclass, true_preds_iclass = evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, 
-                                                                                    classmap_file=classmap_file, config_file=config_file,
-                                                                                    splits_file=splits_file, logfile_foldername=logfile_foldername, 
-                                                                                    modelfile_foldername=modelfile_foldername, 
-                                                                                    expname_basefolder=expname_basefolder, noise_type=noise_type, 
-                                                                                    dataset_type=dataset_type, epoch_ckpt_num=epoch_ckpt_number)
+    
+        eval_summary_iclass, model_preds_iclass, true_preds_iclass, eval_logfile_all = evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, 
+                                                                                                    classmap_file=classmap_file, config_file=config_file, logfile_path=logfile_path, 
+                                                                                                    modelfile_path=modelfile_path, expname_basefolder=expname_basefolder, 
+                                                                                                    noise_type=noise_type, dataset_type=dataset_type, 
+                                                                                                    epoch_ckpt_num=epoch_ckpt_number)
         
         weight_iclass = sum(model_preds_iclass == true_preds_iclass).item() / len(true_preds_iclass)
         total_acc += eval_summary_iclass['accuracy'] * weight_iclass
@@ -217,8 +168,16 @@ def main():
 
     total_acc = total_acc / sum_of_weights
 
+    orig_stdout = sys.stdout
+    f_tmp = open(eval_logfile_all, 'a')
+    sys.stdout = f_tmp
+
     print("-"*100)
-    print("Weighted accuracy of the overall model:{}".format(total_acc))
+    print("-"*100, file=orig_stdout)
+    print("Overall accuracy for {} data : {}".format(dataset_type, total_acc))
+    print("Overall accuracy for {} data : {}".format(dataset_type, total_acc), file=orig_stdout)
+    
+    sys.stdout = orig_stdout
 
     sys.exit(0)
 

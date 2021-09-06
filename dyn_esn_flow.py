@@ -16,7 +16,7 @@ from lib.utils.data_utils import NDArrayEncoder
 
 class DynESN_gen_model(nn.Module):
 
-    def __init__(self, full_modelfile_path, options, device='cpu', num_classes=39, eval_batch_size=128, epoch_ckpt_number=60):
+    def __init__(self, full_modelfile_path, options, device='cpu', num_classes=39, eval_batch_size=128, epoch_ckpt_number=None):
         super(DynESN_gen_model, self).__init__()
 
         self.options = options
@@ -53,6 +53,7 @@ class DynESN_gen_model(nn.Module):
     def create_list_of_models(self):
 
         list_of_models = []
+
         for iclass in range(len(self.list_of_model_files)):
             
             model_file = self.list_of_model_files[iclass]
@@ -75,33 +76,15 @@ class DynESN_gen_model(nn.Module):
 
         return list_of_models
 
-    #def infer(self):
-    #    return None
-
     def sample(self):
         return None
 
-    def predict_sequences(self, iclass, evalloader, mode="test", eval_logfile_path=None):
-
-       
-        num_models = len(self.list_of_models)
+    def predict_sequences(self, class_number, evalloader, mode="test", eval_logfile_path=None):
 
         datafolder = "".join(eval_logfile_path.split("/")[i]+"/" for i in range(len(eval_logfile_path.split("/")) - 1)) # Get the datafolder
-        # sequences has shape (seq_length, batch_size, frame_dim)
-        #batch_size = sequences.shape[1]  
-        #likelihoods_per_model = torch.zeros((num_models, batch_size))
-
-        #with torch.no_grad():
-            
-        #    for i, model in enumerate(self.list_of_models):
-        #        model.eval()
-
-        #        likelihoods_per_model[i] = model.forward(sequences, sequence_batch_lengths)
-            
-        #    predictions = torch.argmax(likelihoods_per_model, dim=0)
 
         if eval_logfile_path is None:
-            eval_logfile = "./log/class{}_{}.log".format(iclass+1, mode)
+            eval_logfile = "./log/class{}_{}.log".format(class_number, mode)
         else:
             eval_logfile = eval_logfile_path
 
@@ -109,7 +92,6 @@ class DynESN_gen_model(nn.Module):
         f_tmp = open(eval_logfile, 'a')
         sys.stdout = f_tmp
 
-        #NOTE: Make one more for loop for likelihood estimation
         llh_per_model_list = []
 
         print("----------------------------- Evaluation Begins -----------------------------\n")
@@ -143,32 +125,32 @@ class DynESN_gen_model(nn.Module):
             llh_all_models = torch.cat(llh_per_model_list, dim=0)
             predictions_all_models = torch.argmax(llh_all_models, dim=0) + 1
 
-        true_predictions = torch.empty(size=(len(evalloader.dataset),)).fill_(iclass+1) # Make a tensor containing the true labels
-
+        true_predictions = torch.empty(size=(len(evalloader.dataset),)).fill_(class_number) # Make a tensor containing the true labels
+        
         # Get the classification summary
-        print("Getting the classification summary for data corresponding to Class:{}".format(iclass+1))
+        print("Getting the classification summary for data corresponding to Class:{}".format(class_number))
         eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=True, zero_division=0)
         eval_summary["num_sequences"] = len(evalloader.dataset)
-        
+        eval_summary["num_corrects"] = sum(predictions_all_models == true_predictions).item()
+
         sys.stdout = orig_stdout
 
         orig_stdout = sys.stdout
         eval_logfile_all = os.path.join(datafolder, "testing.log")
         f_tmp = open(eval_logfile_all, 'a')
         sys.stdout = f_tmp
-
         print("-"*100)
         print("-"*100, file=orig_stdout)
-        print("-"*100)
-        print("Accuracy for class:{}-{} data:{}".format(iclass+1, mode, eval_summary['accuracy']))
-        print("Accuracy for class:{}-{} data:{}".format(iclass+1, mode, eval_summary['accuracy']), file=orig_stdout)
+        print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]))
+        print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]), file=orig_stdout)
         #print(classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=False,  zero_division=0))
-
-        with open(os.path.join(datafolder, "class_{}_dyn_esn_model_gen_clsfcn_summary.json".format(iclass+1)), 'w') as f:
+        print("-"*100)
+        print("-"*100, file=orig_stdout)
+        with open(os.path.join(datafolder, "class_{}_{}_clsfcn_summary.json".format(class_number, mode)), 'w') as f:
             f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
         
         sys.stdout = orig_stdout
-        return predictions_all_models, true_predictions, eval_summary
+        return predictions_all_models, true_predictions, eval_summary, eval_logfile_all
         
 class DynESN_flow(nn.Module):
 
@@ -220,8 +202,8 @@ class DynESN_flow(nn.Module):
         return loglike_sequence
         
 
-def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
-            tr_verbose=True, save_checkpoints="some"):
+def train(dyn_esn_flow_model, options, class_number, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
+            esn_modelfile_path=None, tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed
     optimizer = torch.optim.SGD(dyn_esn_flow_model.parameters(), lr=dyn_esn_flow_model.lr)
@@ -251,7 +233,7 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, valloader, 
         modelfile_path = modelfile_path
     
     if logfile_path is None:
-        training_logfile = "./log/training_dyn_esn_flow_class_{}.log".format(iclass+1)
+        training_logfile = "./log/training_dyn_esn_flow_class_{}.log".format(class_number)
     else:
         training_logfile = logfile_path
 
@@ -347,13 +329,13 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, valloader, 
                 nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed))
             
             # Checkpointing the model every few  epochs
-            if (((epoch + 1) % 5) == 0 or epoch == 0) and save_checkpoints == "all": 
+            #if (((epoch + 1) % 5) == 0 or epoch == 0) and save_checkpoints == "all": 
                 # Checkpointing model every few epochs, in case of grid_search is being done, save_chkpoints = None
-                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
+                # save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(class_number, epoch+1))
             
-            elif (((epoch + 1) % nepochs) == 0) and save_checkpoints == "some": 
+            if (((epoch + 1) % nepochs) == 0) and save_checkpoints == "some": 
                 # Checkpointing model at the end of training epochs, in case of grid_search is being done, save_chkpoints = None
-                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
+                save_model(dyn_esn_flow_model, modelfile_path)
 
             # Saving the losses 
             tr_losses.append(tr_NLL_epoch)
@@ -363,72 +345,27 @@ def train(dyn_esn_flow_model, options, iclass, nepochs, trainloader, valloader, 
             if model_monitor.monitor(epoch=epoch+1) == True:
                 print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1))
                 print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1), file=orig_stdout)
-                save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_converged.pt".format(iclass+1))
+                save_model(dyn_esn_flow_model, modelfile_path)
                 break
 
     except KeyboardInterrupt:
 
         print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1), file=orig_stdout)
         print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
-        save_model(dyn_esn_flow_model, modelfile_path + "/" + "class_{}_dyn_esn_flow_ckpt_epoch_{}.pt".format(iclass+1, epoch+1))
+        save_model(dyn_esn_flow_model, modelfile_path)
     
     # Saving the ESN encoding parameters as well!
     print("Saving ESN model parameters at Epoch:{}".format(epoch+1))
     print("Saving ESN model parameters at Epoch:{}".format(epoch+1), file=orig_stdout)
 
     if model_monitor.monitor(epoch=epoch+1) == False:
-        dyn_esn_flow_model.esn_model.save(foldername=modelfile_path, filename="class_{}_esn_encoding_params_epoch_{}.pt".format(iclass+1, epoch+1))
+        # Save whatever is left at the end of training as the 'converged' set of parameters
+        dyn_esn_flow_model.esn_model.save(full_filename=esn_modelfile_path)
     else:
-        dyn_esn_flow_model.esn_model.save(foldername=modelfile_path, filename="class_{}_esn_encoding_params_converged.pt".format(iclass+1))
+        # Save the converged set of parameters
+        dyn_esn_flow_model.esn_model.save(full_filename=esn_modelfile_path)
 
     # Restoring the original std out pointer
     sys.stdout = orig_stdout
 
     return tr_losses, val_losses, dyn_esn_flow_model
-
-'''
-def predict(dyn_esn_flow_model, options, iclass, training_modelfile, evalloader, mode="test", eval_logfile_path=None):
-    
-    #TODO: Needs to be completed and tested
-    eval_running_loss = 0.0
-    eval_NLL_loss_epoch_sum = 0.0
-    print("----------------------------- Evaluation Begins -----------------------------\n")    
-    
-    # Set model in evaluation mode
-    dyn_esn_flow_model.load_state_dict(torch.load(training_modelfile))
-    criterion = nn.MSELoss()
-    
-    # Push the model to the device
-    dyn_esn_flow_model = push_model(mdl=dyn_esn_flow_model, mul_gpu_flag=options["set_mul_gpu"])
-
-    # Set the model to training mode
-    dyn_esn_flow_model.eval()
-
-    if not eval_logfile_path is None or os.path.exists(eval_logfile_path) == False:
-        eval_logfile = "./log/class{}_{}.log".format(iclass, mode)
-    else:
-        eval_logfile = eval_logfile_path
-
-    orig_stdout = sys.stdout
-    f_tmp = open(eval_logfile, 'a')
-    sys.stdout = f_tmp
-
-    with torch.no_grad():
-        
-        for i, eval_sequence_data in enumerate(evalloader):
-                
-            eval_sequence_batch, eval_sequence_batch_lengths = eval_sequence_data
-            eval_sequence_batch = Variable(eval_sequence_batch, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
-            eval_sequence_batch_lengths = Variable(eval_sequence_batch_lengths, requires_grad=False).type(torch.FloatTensor).to(dyn_esn_flow_model.device)
-            eval_loglike_batch = dyn_esn_flow_model.forward(eval_sequence_batch, eval_sequence_batch_lengths)
-            eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
-
-            eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
-
-    eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
-
-    print('Test loss: {:.3f} using loaded weights: {} %'.format(eval_loss), file=orig_stdout)
-    print('Test loss: {:.3f} using loaded weights: {} %'.format(eval_loss))
-
-    return eval_loss
-'''

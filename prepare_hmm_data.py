@@ -34,48 +34,59 @@ def generate_and_save_dataset(output_data_folder, iclass, frame_dim, num_sequenc
 
     """
     
-    gauss_hmm = GaussianHmm(frame_dim, n_states, mean_emissions=mean_emissions, 
+    train_file = os.path.join(output_data_folder, "train_hmm_{}.pkl".format(iclass))
+    val_file = os.path.join(output_data_folder, "val_hmm_{}.pkl".format(iclass))
+    test_file = os.path.join(output_data_folder, "test_hmm_{}.pkl".format(iclass))
+
+    if os.path.isfile(train_file) == False or os.path.isfile(val_file) == False or os.path.isfile(test_file) == False:
+
+        # This will recreate datasets for a class if the original files are not present / partly present
+        #print(train_file, val_file, test_file)
+        #print(os.path.isfile(train_file) == False, os.path.isfile(val_file) == False, os.path.isfile(test_file) == False)
+        print("Creating all datasets for class-{}, saving them at {}".format(iclass, output_data_folder))
+        gauss_hmm = GaussianHmm(frame_dim, n_states, mean_emissions=mean_emissions, 
                             cov_emissions=cov_emissions, init_start_prob=init_start_prob, a_trans=transition_matrix)
     
-    num_training_val_sequences = int(tr_to_test_split*num_sequences)
-    num_training_sequences = int(tr_to_val_split * num_training_val_sequences)
-    num_validation_sequences = num_training_val_sequences - num_training_sequences
-    num_testing_sequences = num_sequences - num_training_sequences
-    
-    sequences = []
-    
-    indices = np.random.permutation(num_sequences).tolist()
-    tr_indices = indices[:num_training_sequences]
-    val_indices = indices[num_training_sequences:num_training_sequences+num_validation_sequences]
-    test_indices = indices[num_training_sequences + num_validation_sequences:num_training_sequences + num_validation_sequences+num_testing_sequences]
-
-    for _ in range(num_sequences):
-        seq_length = np.random.randint(low=min_seq_length, high=max_seq_length)
-        # has shape (seq_length, 1, frame_dim)
-        single_seq = gauss_hmm.sample_sequences(seq_length=seq_length, 
-                                                n_sequences=1)
-        # reshape to delete the useless second dimension of a single channel
-        sequences.append(single_seq.reshape((seq_length, frame_dim)))
-    
-    if min_seq_length == max_seq_length - 1:
-        sequences = np.array(sequences, dtype='float64')
-    else:
-        sequences = np.array(sequences, dtype='object')
+        num_training_val_sequences = int(tr_to_test_split*num_sequences)
+        num_training_sequences = int(tr_to_val_split * num_training_val_sequences)
+        num_validation_sequences = num_training_val_sequences - num_training_sequences
+        num_testing_sequences = num_sequences - num_training_sequences
         
-    train_sequences = sequences[tr_indices]
-    val_sequences = sequences[val_indices]
-    test_sequences = sequences[test_indices]
-    
+        sequences = []
+        
+        indices = np.random.permutation(num_sequences).tolist()
+        tr_indices = indices[:num_training_sequences]
+        val_indices = indices[num_training_sequences:num_training_sequences+num_validation_sequences]
+        test_indices = indices[num_training_sequences + num_validation_sequences:num_training_sequences + num_validation_sequences+num_testing_sequences]
 
-    print("Creating datasets for class-{}, saving them at {}".format(iclass, output_data_folder))
-    with open(os.path.join(output_data_folder, "train_hmm_{}.pkl".format(iclass)), "wb") as f1:
-        pkl.dump(train_sequences, f1)
-    
-    with open(os.path.join(output_data_folder, "val_hmm_{}.pkl".format(iclass)), "wb") as f2:
-        pkl.dump(val_sequences, f2)
-    
-    with open(os.path.join(output_data_folder, "test_hmm_{}.pkl".format(iclass)), "wb") as f3:
-        pkl.dump(test_sequences, f3)
+        for _ in range(num_sequences):
+            seq_length = np.random.randint(low=min_seq_length, high=max_seq_length)
+            # has shape (seq_length, 1, frame_dim)
+            single_seq = gauss_hmm.sample_sequences(seq_length=seq_length, 
+                                                    n_sequences=1)
+            # reshape to delete the useless second dimension of a single channel
+            sequences.append(single_seq.reshape((seq_length, frame_dim)))
+        
+        if min_seq_length == max_seq_length - 1:
+            sequences = np.array(sequences, dtype='float64')
+        else:
+            sequences = np.array(sequences, dtype='object')
+
+        train_sequences = sequences[tr_indices]
+        val_sequences = sequences[val_indices]
+        test_sequences = sequences[test_indices]
+
+        with open(train_file, "wb") as f1:
+            pkl.dump(train_sequences, f1)
+        
+        with open(val_file, "wb") as f2:
+            pkl.dump(val_sequences, f2)
+        
+        with open(test_file, "wb") as f3:
+            pkl.dump(test_sequences, f3)
+
+    elif os.path.isfile(train_file) == True and os.path.isfile(val_file) == True and os.path.isfile(test_file) == True:
+        print("Datasets for class-{},  already present at {}".format(iclass, output_data_folder))
 
     return None
 
@@ -98,8 +109,8 @@ def main():
     frame_dim = args.frame_dim
     num_sequences = args.num_sequences
     
-    min_seq_length = 10#3
-    max_seq_length = 11#15
+    min_seq_length = 3
+    max_seq_length = 15
 
     #print(num_classes, output_data_folder, n_states, frame_dim)
     

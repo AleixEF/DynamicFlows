@@ -183,16 +183,17 @@ class ConvergenceMonitor(object):
             
             convg_flag = self.check_convergence()
 
-            if convg_flag == True and self.epoch_prev == 0: # If convergence is satisfied in first condition itself
+            #if convg_flag == True and self.epoch_prev == 0: # If convergence is satisfied in first condition itself
                 #print("Iteration:{}".format(epoch))
-                self.epoch_count += 1
-                self.epoch_arr.append(epoch)
-                if self.epoch_count == self.max_iter:
-                    print("Exit and Convergence reached after {} iterations for relative change in loss below :{}".format(self.epoch_count, self.tol))   
-                    self.convergence_flag = True
+            #    self.epoch_count += 1
+            #    self.epoch_arr.append(epoch)
+            #    if self.epoch_count == self.max_epochs:
+            #        print("Exit and Convergence reached after {} iterations for relative change in loss below :{}".format(self.epoch_count, self.tol))   
+            #        self.convergence_flag = True
 
-            elif convg_flag == True and self.epoch_prev == epoch-1: # If convergence is satisfied
+            #elif convg_flag == True and self.epoch_prev == epoch-1: # If convergence is satisfied
                 #print("Iteration:{}".format(epoch))                                                                        
+            if convg_flag == True and self.epoch_prev == epoch-1: # If convergence is satisfied
                 self.epoch_count += 1 
                 self.epoch_arr.append(epoch)
                 if self.epoch_count == self.max_epochs:

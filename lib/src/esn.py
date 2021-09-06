@@ -58,12 +58,12 @@ class EchoStateNetwork(object):
             self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
         return self.h_esn
 
-    def save(self, foldername, filename):
+    def save(self, full_filename):
 
         esn_encoding_params = {}
         esn_encoding_params["W_res"] = self.Wres
         esn_encoding_params["W_fb"] = self.Wfb
-        torch.save(esn_encoding_params, os.path.join(foldername, filename))
+        torch.save(esn_encoding_params, full_filename)
         #torch.save(self.Wfb, folder_path+"/feedback_mat_{}.pt".format(iclass))
         return
     
