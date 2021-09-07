@@ -150,7 +150,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Enter relevant arguments for training one Dynamic ESN-Based Normalizing flow model")
     parser.add_argument("--train_data", help="Enter the full path to the training dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
-    parser.add_argument("--val_data", help="Enter the full path to the validation dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
+    parser.add_argument("--val_data", help="Enter the full path to the validation dataset containing all the phonemes (val.<nfeats>.pkl", type=str)
     parser.add_argument("--num_classes", help="Enter the number of classes", type=int)
     parser.add_argument("--class_index", help="Enter the class index (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=int)
     #parser.add_argument("--class_indices", help="Array of class indices (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=list)

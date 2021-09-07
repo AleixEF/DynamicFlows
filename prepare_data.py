@@ -2,46 +2,14 @@ import sys
 import numpy as np
 import pickle as pkl
 import os
+import json
 from functools import partial
 from parse import parse
-from lib.utils.data_utils import read_classmap, write_classmap, flip,\
-    phn61_to_phn39, remove_label, to_phoneme_level, getsubset, normalize
+from lib.utils.data_utils import read_classmap, write_classmap, flip, split_tr_val_data, \
+    phn61_to_phn39, remove_label, to_phoneme_level, getsubset, normalize, write_class_wise_files, get_phoneme_mapping
 import argparse
 
-def get_phoneme_mapping(iphn, phn2int, n_taken=0):
-    """
-    This function takes an array of ints 'iphn' and a mapping dictionary 'phn2int' 
-    ----
-    Args:
-    
-    - iphn: List of integers that denote the class number which the phoneme is associated with
-    - phn2int: Dictionary describing the mapping from phones (phn) to integers (int) (sort of a codebook)
-    - n_taken: Possible number of classses already processed
-
-    Outputs:
-
-    - class2phn: A subdictionary that denotes the new subclass number and the corresponding phoneme associated for that subclass
-    - class2phn: A subdictionary that denotes the new subclass number and the corresponding original class no. associated for that subclass
-    """
-    # Reverse the codebook for easier manipulation
-    int2phn = flip(phn2int)
-    # Define a sub-dictionary of the picked phonemes
-    class2phn = {j+n_taken: int2phn[i] for j, i in enumerate(iphn)}
-    class2int = {j+n_taken: i for j, i in enumerate(iphn)}
-    return class2phn, class2int
-
-
-def test_get_phoneme_mapping():
-    """
-    A test function to check the functionality of the 'get_phoneme_mapping()' function 
-    """
-    phn2int = {"a": 0, "b": 2, "c": 1, "d": 3} 
-    iphn = np.array([1, 2])
-    assert(get_phoneme_mapping(iphn, phn2int) == {0:"c", 1:"b"})
-    iphn = np.array([2, 1])
-    assert(get_phoneme_mapping(iphn, phn2int) == {0:"b", 1:"c"})
-
-def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_phn=None,totclasses=None, verbose=False):
+def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_phn=None,totclasses=None, verbose=False, tr_to_val_split=1.0):
     """
     This is the function taht is repsonsible for reading the data files, both (training and test data in .pkl format)
     and partitions the .pkl files on a per phoneme basis or a per class basis (because the task is Phone Recognition)
@@ -54,42 +22,66 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     - n_phn: No. of phonemes considered for partition of left to be retrieved
     - totclasses: Total number of phonemes considered in the list
     - verbose: Flag for controlling verbose output
+    - fname_dval: full path of the validation data file containing data and labels in .pkl format (if tr_to_val_split is < 1.0)
+    If this file is not already present, it will be created. By default this is set to 'None'.
+    - tr_to_val_split: Percent of the data to be used for training from the total amount of training data, remaining used for validation
 
     Output:
 
     - xtrain: Training data for the subclassed dataset
     - ytrain: Training data label for the subclassed dataset
-    - xtrain: Training data for the subclassed dataset
-    - ytrain: Training data label for the subclassed dataset
+    - xtest: Testing data for the subclassed dataset
+    - ytest: Testing data label for the subclassed dataset
     - class2phn: A subdictionary that denotes the new subclass number and the corresponding phoneme associated for 
                 that subclass
     - class2int: A subdictionary that denotes the new subclass number and the corresponding original class no. associated 
                 for that subclass
+    - xval: Validation data for the subclassed dataset
+    - yval: Validation data label for the subclassed dataset
+    
     """
     # Read the datafiles
     te_DATA, te_keys, te_lengths, phn2int_61, te_PHN = pkl.load(open(fname_dtest, "rb"))
-    tr_DATA, tr_keys, tr_lengths, tr_PHN = pkl.load(open(fname_dtrain, "rb"))
+    tr_plus_val_DATA, tr_plus_val_keys, tr_plus_val_lengths, tr_plus_val_PHN = pkl.load(open(fname_dtrain, "rb"))
+
+    # Partition the training data into training + validation datasets
+    tr_DATA, tr_keys, tr_lengths, tr_PHN, val_DATA, val_keys, val_lengths, val_PHN = split_tr_val_data(tr_plus_val_DATA, 
+                                                                                                    tr_plus_val_keys, 
+                                                                                                    tr_plus_val_lengths, 
+                                                                                                    tr_plus_val_PHN, 
+                                                                                                    tr_to_val_split=tr_to_val_split)
 
     if verbose:
         print("Data loaded from files.")
 
-    # Take labels down to phoneme level
+    # Partitions data and labels on a per-phoneme basis, removes the label present on the first column of a given a sentence
     data_tr, label_tr = to_phoneme_level(tr_DATA)
     data_te, label_te = to_phoneme_level(te_DATA)
+
+    if not val_DATA is None:
+        data_val, label_val = to_phoneme_level(val_DATA)
+    else:
+        data_val, label_val = None, None
 
     # Checkout table 3 at
     # https://www.intechopen.com/books/speech-technologies/phoneme-recognition-on-the-timit-database
     # Or in the html file
     # for details
     phn2int = phn2int_61
+    
     if totclasses == 39:
-        f = partial(phn61_to_phn39, int2phn_61=flip(phn2int_61), data_folder=os.path.dirname(fname_dtest))
+        # This assumes that the dictionary containing the mappings from 61 phones to 39 phones are present in the same directory as 'fname_dtest' 
+        f = partial(phn61_to_phn39, int2phn_61=flip(phn2int_61), data_folder=os.path.dirname(fname_dtest)) 
         label_tr, phn2int_39 = f(label_tr)
         label_te, _ = f(label_te, phn2int_39=phn2int_39)
 
-        data_tr, label_tr = remove_label(data_tr, label_tr, phn2int_39)
+        data_tr, label_tr = remove_label(data_tr, label_tr, phn2int_39) # Removes the label '-' from the list of labels
         data_te, label_te = remove_label(data_te, label_te, phn2int_39)
-        phn2int_39.pop('-', None)
+        
+        if not val_DATA is None:
+            data_val, label_val = remove_label(data_val, label_val, phn2int_39)
+
+        phn2int_39.pop('-', None) # Removes the label from the dictionary
         phn2int = phn2int_39
 
     # List the phoneme names already in the data folder.
@@ -105,42 +97,64 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     xtrain, ytrain = getsubset(data_tr, label_tr, iphn)
     xtest, ytest = getsubset(data_te, label_te, iphn)
 
+    if val_DATA is None:
+        xval, yval = None, None
+    else:
+        xval, yval = getsubset(data_val, label_val, iphn)
+
     class2phn, class2int = get_phoneme_mapping(iphn, phn2int, n_taken=len(taken))
 
-    return xtrain, ytrain, xtest, ytest, class2phn, class2int
+    return xtrain, ytrain, xtest, ytest, class2phn, class2int, xval, yval
+
 
 if __name__ == "__main__":
     #TODO: To fix and adapt this for our task
     usage = "Build separate datasets for each family of phonemes.\n\"" \
             "Each data set contains the sequences of one phoneme.\n"\
             "Usage: python bin/prepare_data.py \"[nclasses]/[totclasses (61|39)]\" [training data] [testing data]\n"\
-            "Example: python bin/prepare_data.py 2/61 data/train13.pkl data/test13.pkl"
+            "Example: python bin/prepare_data.py 2/61 data/train.39.pkl data/test.39.pkl"
 
     parser = argparse.ArgumentParser(description="Input arguments for splitting a given dataset (.pkl) into individual .pkl files")
     parser.add_argument("--class_frac", help="Enter as a string: num_classes/tot_num_classes", type=str)
     parser.add_argument("--training_data", help="Enter the full path to the training data file", type=str)
     parser.add_argument("--testing_data", help="Enter the full path to the testing data file", type=str)
+    parser.add_argument("--config_file", help="Enter the path to the config file for loading some options for training / validation", type=str, default=None)
 
     args = parser.parse_args() 
     
     nclasses, totclasses = parse("{:d}/{:d}", args.class_frac)
     train_inputfile = args.training_data
     test_inputfile = args.testing_data
-    
-    #if len(sys.argv) != 4 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
-    #    print(usage)
-    #    sys.exit(1)
+    config_file = args.config_file
 
-    #nclasses, totclasses = parse("{:d}/{:d}", sys.argv[1])
-    #train_inputfile = sys.argv[2]
-    #test_inputfile = sys.argv[3]
+    # Loading the options from the config and selecting the training to validation split option
+    with open(config_file, 'r') as f:
+        options = json.load(f)
+
+    # If this is 1.0 it means the entire data is going to used for training, 
+    # else some of the data for training and remaining for testing
+    tr_to_val_split = options["data"]["tr_to_val_split"] 
 
     train_outfiles = [train_inputfile.replace(".pkl", "_" + str(i+1) + ".pkl") for i in range(nclasses)]
     test_outfiles = [test_inputfile.replace(".pkl", "_" + str(i+1) + ".pkl") for i in range(nclasses)]
-    data_folder = os.path.dirname(test_inputfile)
-    #print(train_outfiles)
-    #print(test_outfiles)
+    
+    if not tr_to_val_split is None:
+        val_inputfile = train_inputfile.replace("train", "val") # This should create a filename 'val.39.pkl'
+        val_outfiles = [val_inputfile.replace(".pkl", "_" + str(i+1) + ".pkl") for i in range(nclasses)]
+    else:
+        val_outfiles = []
 
+    data_folder = os.path.dirname(test_inputfile)
+    
+    print("Training files")
+    print(train_outfiles)
+
+    print("Validation files")
+    print(val_outfiles)
+
+    print("Testing files")
+    print(test_outfiles)
+    
     classmap = read_classmap(data_folder)
     n_existing = len(classmap)
     #print(classmap)
@@ -166,13 +180,18 @@ if __name__ == "__main__":
     print("(info)", nclasses_fetch, "classes to fetch.")
 
     # Now {x,y}{train,test} only contain newly picked phonemes (not present in classmap)
-    xtrain, ytrain, xtest, ytest, class2phn, class2int = prepare_data(fname_dtest=test_inputfile, fname_dtrain=train_inputfile,\
-                                                n_phn=nclasses_fetch,
-                                                classmap_existing=classmap,
-                                                totclasses=totclasses,
-                                                verbose=False)
+    xtrain, ytrain, xtest, ytest, class2phn, class2int, xval, yval = prepare_data(fname_dtest=test_inputfile, fname_dtrain=train_inputfile,\
+                                                                                n_phn=nclasses_fetch,
+                                                                                classmap_existing=classmap,
+                                                                                totclasses=totclasses,
+                                                                                verbose=True,
+                                                                                tr_to_val_split=tr_to_val_split)
+
     # normalization 
-    xtrain, xtest = normalize(xtrain, xtest)
+    if xval is None:
+        xtrain, xtest = normalize(xtrain, xtest)
+    else:
+        xtrain, xtest, xval = normalize(xtrain, xtest, xval)
 
     classmap = {**classmap, **class2phn}
 
@@ -181,13 +200,21 @@ if __name__ == "__main__":
     assert (len(classmap) == nclasses)
 
     # Create only the classes that are left
-    for i, ic in class2int.items():
-        assert(not os.path.isfile(train_outfiles[i]))
-        assert(not os.path.isfile(test_outfiles[i]))
-        xtrain_c = xtrain[ytrain == ic]
-        xtest_c = xtest[ytest == ic]
-        pkl.dump(xtrain_c, open(train_outfiles[i], "wb"))
-        pkl.dump(xtest_c, open(test_outfiles[i], "wb"))
+    write_class_wise_files(class2int=class2int, data_outfiles=train_outfiles, x=xtrain, y=ytrain)
+    write_class_wise_files(class2int=class2int, data_outfiles=test_outfiles, x=xtest, y=ytest)
+
+    if (not xval is None) and (not yval is None):
+        write_class_wise_files(class2int=class2int, data_outfiles=val_outfiles, x=xval, y=yval)
+    else:
+        pass
+        
+    #for i, ic in class2int.items():
+    #    assert(not os.path.isfile(train_outfiles[i]))
+    #    assert(not os.path.isfile(test_outfiles[i]))
+    #    xtrain_c = xtrain[ytrain == ic]
+    #    xtest_c = xtest[ytest == ic]
+    #    pkl.dump(xtrain_c, open(train_outfiles[i], "wb"))
+    #    pkl.dump(xtest_c, open(test_outfiles[i], "wb"))
 
     # Write the mapping class number <=> phoneme
     write_classmap(classmap, os.path.dirname(test_inputfile))

@@ -41,8 +41,8 @@ def norm_min_max(x, min_, max_):
     x_scaling = (x - min_.reshape(1, -1)) / (max_.reshape(1, -1) - min_.reshape(1, -1))
     return x_scaling
 
-def normalize(xtrain, xtest):
-    """Normalize training data set between 0 and 1. Perform the same scaling on the testing set."""
+def normalize(xtrain, xtest, xval=None):
+    """Normalize training data set between 0 and 1. Perform the same scaling on the testing set and in case of validation set (if present)."""
     f_min = np.vectorize(lambda x : np.min(x, axis=0), signature="()->(k)")
     f_max = np.vectorize(lambda x : np.max(x, axis=0), signature="()->(k)")
     min_tr = np.min(f_min(xtrain), axis=0)
@@ -52,7 +52,10 @@ def normalize(xtrain, xtest):
     min_tr[0] = 0
     max_tr[0] = 1
     f_perform_normalize = np.vectorize(partial(norm_min_max, min_=min_tr, max_=max_tr), signature="()->()", otypes=[np.ndarray])
-    return f_perform_normalize(xtrain), f_perform_normalize(xtest)
+    if xval is None:
+        return f_perform_normalize(xtrain), f_perform_normalize(xtest)
+    else:
+        return f_perform_normalize(xtrain), f_perform_normalize(xtest), f_perform_normalize(xval)
 
 def find_changed_phoneme_label(label_sequence):
     """ This function is used to find location / indices where the phoneme label has changed.
@@ -192,6 +195,86 @@ def write_classmap(class2phn, folder):
         print("Classes are: \n" + out_str, file=sys.stderr)
         outfile.write(out_str+"\n")
     return 0
+
+def write_class_wise_files(class2int, data_outfiles, x, y):
+    """Write down the data files partitioned on a class-wise basis to appropriate .pkl files"""
+    for i, ic in class2int.items():
+        assert(not os.path.isfile(data_outfiles[i]))
+        x_c = x[y == ic]
+        pkl.dump(x_c, open(data_outfiles[i], "wb"))
+    
+    return None
+
+def get_phoneme_mapping(iphn, phn2int, n_taken=0):
+    """
+    This function takes an array of ints 'iphn' and a mapping dictionary 'phn2int' 
+    ----
+    Args:
+    
+    - iphn: List of integers that denote the class number which the phoneme is associated with
+    - phn2int: Dictionary describing the mapping from phones (phn) to integers (int) (sort of a codebook)
+    - n_taken: Possible number of classses already processed
+
+    Outputs:
+
+    - class2phn: A subdictionary that denotes the new subclass number and the corresponding phoneme associated for that subclass
+    - class2phn: A subdictionary that denotes the new subclass number and the corresponding original class no. associated for that subclass
+    """
+    # Reverse the codebook for easier manipulation
+    int2phn = flip(phn2int)
+    # Define a sub-dictionary of the picked phonemes
+    class2phn = {j+n_taken: int2phn[i] for j, i in enumerate(iphn)}
+    class2int = {j+n_taken: i for j, i in enumerate(iphn)}
+    return class2phn, class2int
+
+
+def test_get_phoneme_mapping():
+    """
+    A test function to check the functionality of the 'get_phoneme_mapping()' function 
+    """
+    phn2int = {"a": 0, "b": 2, "c": 1, "d": 3} 
+    iphn = np.array([1, 2])
+    assert(get_phoneme_mapping(iphn, phn2int) == {0:"c", 1:"b"})
+    iphn = np.array([2, 1])
+    assert(get_phoneme_mapping(iphn, phn2int) == {0:"b", 1:"c"})
+
+def split_tr_val_data(tr_DATA, tr_keys, tr_lengths, tr_PHN, tr_to_val_split=1.0):
+
+    val_DATA = None
+    val_keys = None
+    val_lengths = None
+    val_PHN = None
+
+    if tr_to_val_split < 1.0 and tr_to_val_split > 0.0:
+        
+        # Convert all the data in lists to numpy arrays
+        tr_DATA_arr = np.array(tr_DATA, dtype='object')
+        tr_keys_arr = np.array(tr_keys, dtype='object')
+        tr_lengths_arr = np.array(tr_lengths, dtype='object')
+        tr_PHN_arr = np.array(tr_PHN, dtype='object')
+        
+        # Get the indices 
+        num_tr_plus_val_sequences = len(tr_DATA)
+        num_tr_sequences = int(tr_to_val_split * num_tr_plus_val_sequences)
+        num_val_sequences = num_tr_plus_val_sequences - num_tr_sequences
+        indices = np.random.permutation(num_tr_plus_val_sequences).tolist() # get the indices and randomly permute them
+        tr_indices = indices[:num_tr_sequences] # get the indices corresponding to the training data
+        val_indices = indices[num_tr_sequences:num_tr_sequences + num_val_sequences] # get the indices corresponding to the validation data
+
+        # Get the actual training data
+        tr_DATA_actual, tr_keys_actual, tr_lengths_actual, tr_PHN_actual = tr_DATA_arr[tr_indices].tolist(), tr_keys_arr[tr_indices].tolist(), \
+                                                                            tr_lengths_arr[tr_indices].tolist(), tr_PHN_arr[tr_indices].tolist()
+
+        # Get the validation data
+        val_DATA, val_keys, val_lengths, val_PHN = tr_DATA_arr[val_indices].tolist(), tr_keys_arr[val_indices].tolist(), \
+                                                    tr_lengths_arr[val_indices].tolist(), tr_PHN_arr[val_indices].tolist()
+
+        return tr_DATA_actual, tr_keys_actual, tr_lengths_actual, tr_PHN_actual, val_DATA, val_keys, val_lengths, val_PHN
+    
+    else:
+
+        # Partitioning not required, so return the training data as it is, and return None values for the validation data
+        return tr_DATA, tr_keys, tr_lengths, tr_PHN, val_DATA, val_keys, val_lengths, val_PHN
 
 def append_class(data_file, iclass):
     return data_file.replace(".pkl", "_" + str(iclass)+".pkl")

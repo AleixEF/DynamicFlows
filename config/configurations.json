@@ -9,14 +9,16 @@
     "train":
     {
         "n_epochs": 30,
-        "batch_size": 128,
-        "tr_to_val_split":1.0
+        "batch_size": 128
+    },
+
+    "data":{
+        "tr_to_val_split":0.8
     },
 
     "eval":
     {
         "batch_size": 128
-
     },
 
     "dyn_esn_flow":
