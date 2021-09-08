@@ -23,7 +23,7 @@
 
     "dyn_esn_flow":
     {
-        "frame_dim":40, 
+        "frame_dim":2, 
         "esn_dim":500, 
         "conn_per_neuron":10, 
         "spectral_radius":0.8, 

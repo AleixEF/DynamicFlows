@@ -156,7 +156,6 @@ def main():
     #parser.add_argument("--class_indices", help="Array of class indices (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=list)
     parser.add_argument("--classmap", help="Enter full path to the class_map.json file", type=str, default="./data/class_map.json")
     parser.add_argument("--config", help="Enter full path to the .json file containing the model hyperparameters", type=str, default="./config/configurations.json")
-    parser.add_argument("--splits_file", help="Enter the name of the splits file (in case of validation data testing)", type=str, default="tr_to_val_splits_file.pkl")
     parser.add_argument("--expname_basefolder", help="Enter the basepath to save the logfile, modefile", type=str, default=None)
     parser.add_argument("--noise_type", help="Enter the type of noise, by default -- clean", type=str, default="clean")
 
@@ -168,7 +167,6 @@ def main():
     #iclass_arr = args.class_indices
     classmap_file = args.classmap
     config_file = args.config
-    splits_file = args.splits_file
     expname_basefolder = args.expname_basefolder
     noise_type = args.noise_type
 
