@@ -180,6 +180,14 @@ def main():
     # Define the basepath for storing the modelfiles
     modelfile_foldername = "models"
 
+    # Incase of HMM uncomment this line for the expname_basefolder
+    if expname_basefolder == "hmm":
+        #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths/dyn_esn_flow_{}/".format(num_classes, noise_type)
+    else:
+        # This would require the experiments folder to be created prior to starting the experiments 
+        pass
+
     # Get the name of the log file and full path to store the final saved model
     # Get the log and model file paths
     logfile_path, modelfile_path_folder = create_log_and_model_folders(class_index=iclass,
@@ -195,13 +203,6 @@ def main():
 
     modelfile_path = os.path.join(modelfile_path_folder, modelfile_name)
     esn_modelfile_path = os.path.join(modelfile_path_folder, esn_modelfile_name)
-
-    # Incase of HMM uncomment this line for the expname_basefolder
-    if expname_basefolder == "hmm":
-        #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
-        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths/dyn_esn_flow_{}/".format(num_classes, noise_type)
-    else:
-        pass
 
     #iclass = int(iclass)
     train_model(train_datafile=train_datafile, val_datafile=val_datafile, iclass=iclass, num_classes=num_classes, 
