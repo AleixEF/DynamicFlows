@@ -202,7 +202,7 @@ class DynESN_flow(nn.Module):
         return loglike_sequence
         
 
-def train(dyn_esn_flow_model, options, class_number, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
+def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
             esn_modelfile_path=None, tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed
@@ -253,6 +253,8 @@ def train(dyn_esn_flow_model, options, class_number, nepochs, trainloader, vallo
     # Might modify this later on, to just kep for the logfile
     print("No. of trainable parameters: {}\n".format(total_num_trainable_params), file=orig_stdout)
     print("No. of trainable parameters: {}\n".format(total_num_trainable_params))
+    print("Training model for Phoneme: {}".format(class_phn), file=orig_stdout)
+    print("Training model for Phoneme: {}".format(class_phn))
 
     # Introducing a way to save model progress when KeyboardInterrupt is encountered
     try:

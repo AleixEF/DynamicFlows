@@ -119,7 +119,7 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
 
         # Run the model training
 
-        tr_losses, val_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass+1, nepochs=options["train"]["n_epochs"],
+        tr_losses, val_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass+1, iclass_phn, nepochs=options["train"]["n_epochs"],
                                             trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
                                             esn_modelfile_path=esn_modelfile_path, tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
         
