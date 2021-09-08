@@ -84,9 +84,10 @@ def build_reservoir(esn_dim, conn_per_neur, spec_rad):
     """
     Wres = np.zeros((esn_dim, esn_dim))
     for row in range(esn_dim):
-        rng = np.random.default_rng() 
+        #rng = np.random.default_rng() 
         # generate conn_per_neur different random ints from 0 to esn_dim-1
-        random_columns = rng.choice(esn_dim, size=conn_per_neur, replace=False)
+        #random_columns = rng.choice(esn_dim, size=conn_per_neur, replace=False)
+        random_columns = np.random.choice(esn_dim, size=conn_per_neur, replace=False)
         for col in random_columns:
             Wres[row, col] = np.random.normal()
     Wres = change_spectral_radius(Wres, spec_rad)
