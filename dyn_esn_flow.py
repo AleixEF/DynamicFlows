@@ -1,3 +1,4 @@
+from collections import deque
 import enum
 from operator import mod
 import sys
@@ -70,7 +71,7 @@ class DynESN_gen_model(nn.Module):
             
             # Load the ESN related matrices
             print("Loading ESN model for class : {} found at:{}".format(iclass+1, esn_model_file))
-            dyn_esn_flow_model.esn_model.load(full_filename=esn_model_file)
+            dyn_esn_flow_model.esn_model.load(full_filename=esn_model_file, device=self.device)
 
             list_of_models.append(dyn_esn_flow_model)
 
@@ -178,7 +179,8 @@ class DynESN_flow(nn.Module):
         self.esn_model = esn.EchoStateNetwork(frame_dim=self.frame_dim, 
                                             esn_dim=self.esn_dim, 
                                             conn_per_neur=self.conn_per_neuron, 
-                                            spectr_rad=self.spectral_radius)
+                                            spectr_rad=self.spectral_radius,
+                                            device=self.device)
 
         self.flow_model = flows.NormalizingFlow(frame_dim=self.frame_dim, 
                                                 hidden_layer_dim=self.hidden_layer_dim, 

@@ -13,7 +13,7 @@ import os
 
 class EchoStateNetwork(object):
     def __init__(self, frame_dim, esn_dim=500, 
-                 conn_per_neur=10, spectr_rad=0.8):
+                 conn_per_neur=10, spectr_rad=0.8, device='cpu'):
         """ A reservoir of neurons capable to receive a batch of sequences and to encode it in a batch of hidden states.
         The input data should not take big values or the tanh function used for the recurrence will saturate to +-1.
         It is recommended to check the saturation does not occur by plotting the hidden state vector after the encoding.
@@ -33,16 +33,16 @@ class EchoStateNetwork(object):
         
         self.frame_dim = frame_dim
         self.esn_dim = esn_dim
+        self.device = device
         
         # We need to know batch_size (a data property), to initialize it
         self.h_esn = None
         
-        self.Wfb = build_Wfb(esn_dim, frame_dim, spectr_rad)
-        self.Wres = build_reservoir(esn_dim, conn_per_neur, spectr_rad)
+        self.Wfb = build_Wfb(esn_dim, frame_dim, spectr_rad).to(self.device)
+        self.Wres = build_reservoir(esn_dim, conn_per_neur, spectr_rad).to(self.device)
     
     def init_hidden_state(self, batch_size):
-        self.h_esn = torch.zeros((batch_size, self.esn_dim))
-
+        self.h_esn = torch.zeros((batch_size, self.esn_dim)).to(self.device)
         return self.h_esn
         
     def next_hidden_state(self, x_frame):
@@ -61,17 +61,18 @@ class EchoStateNetwork(object):
     def save(self, full_filename):
 
         esn_encoding_params = {}
-        esn_encoding_params["W_res"] = self.Wres
-        esn_encoding_params["W_fb"] = self.Wfb
+        esn_encoding_params["W_res"] = self.Wres.cpu()
+        esn_encoding_params["W_fb"] = self.Wfb.cpu()
         torch.save(esn_encoding_params, full_filename)
         #torch.save(self.Wfb, folder_path+"/feedback_mat_{}.pt".format(iclass))
         return
     
-    
-    def load(self, full_filename):
+    def load(self, full_filename, device='cpu'):
         esn_encoded_params = torch.load(full_filename)
         self.Wfb, self.Wres = esn_encoded_params["W_fb"], esn_encoded_params["W_res"]
         self.esn_dim, self.frame_dim = self.Wfb.shape
+        self.Wfb = self.Wfb.to(device)
+        self.Wres = self.Wres.to(device)
         return self
     
     
