@@ -188,7 +188,8 @@ class DynESN_flow(nn.Module):
                                                 esn_dim=self.esn_dim, 
                                                 b_mask=None,  # Not sure where to put this part  
                                                 num_hidden_layers=self.num_hidden_layers, 
-                                                toeplitz=self.use_toeplitz
+                                                toeplitz=self.use_toeplitz,
+                                                device=self.device
                                                 )
 
     def forward(self, sequence_batch, sequence_batch_lengths):

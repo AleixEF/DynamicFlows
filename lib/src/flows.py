@@ -14,7 +14,7 @@ from ..utils import flow_layer_utils as f_utils
 
 class NormalizingFlow(nn.Module):
     def __init__(self, frame_dim, hidden_layer_dim, esn_dim=500, b_mask=None,   
-                 num_flow_layers=2, num_hidden_layers=1, toeplitz=True):
+                 num_flow_layers=2, num_hidden_layers=1, toeplitz=True, device='cpu'):
         """ Class constructor of the normalizing flow model
 
         Args:
@@ -37,6 +37,7 @@ class NormalizingFlow(nn.Module):
         else:
             self.b_mask = b_mask  # must have shape (1, frame_dim)
         
+        self.b_mask = self.b_mask.to(device)
         self.rescale = torch.nn.utils.weight_norm(Rescale(frame_dim))
 
         self.frame_dim = frame_dim
@@ -198,6 +199,7 @@ class FlowLayer(nn.Module):
             log_det: 2D array of shape (batch_size, 1). The logarithm of the determinant of the Jacobian of f on x_frame
 
         """
+        print(x_frame.device, h_esn.device, b_mask.device)
         slope, intercept = self.nn(b_mask*x_frame, h_esn)
         slope = self.rescale_function(slope)  # Performing weight normalization re-scaling
         z_latent = b_mask*x_frame \
@@ -217,6 +219,7 @@ class FlowLayer(nn.Module):
         Returns: x_data_space: 2D array of shape (batch_size, frame_dim) distributed as the data space
 
         """
+        #print(z_latent.device, h_esn.device, b_mask.device)
         slope, intercept = self.nn(b_mask*z_latent, h_esn)
         slope = self.rescale_function(slope)  # Performing weightnorm re-scaling
         x_data_space = b_mask*z_latent \
