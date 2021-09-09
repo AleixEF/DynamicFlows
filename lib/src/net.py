@@ -27,11 +27,13 @@ class NeuralNetwork(nn.Module):
             num_hidden_layers: How many hidden layers the net has.
             toeplitz: If True, the weights of the combined to hidden layer have a toeplitz matrix form.
         """
-        
         super(NeuralNetwork, self).__init__()
+        
+        self.device = device
+
         if toeplitz:
             self.combined2hidden = nn.Sequential(
-                LinearToeplitz(frame_dim+esn_dim, hidden_dim),
+                LinearToeplitz(frame_dim+esn_dim, hidden_dim, device),
                 nn.ReLU())           
         else:
             self.combined2hidden = nn.Sequential(
@@ -61,7 +63,8 @@ class NeuralNetwork(nn.Module):
         
     def forward(self, x_frame, h_esn):
         # concat along the frame dim (last dim), not along the batch_size dim
-        combined = torch.cat((x_frame, h_esn), dim=-1)  
+        combined = torch.cat((x_frame, h_esn), dim=-1)
+        print(combined.device)
         q_hidden = self.combined2hidden(combined)
         
         for linear_relu in self.hidden2hidden:

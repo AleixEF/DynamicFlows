@@ -13,10 +13,12 @@ import math
 
 
 class LinearToeplitz(nn.Module):
-    def __init__(self, input_features, output_features):
+    def __init__(self, input_features, output_features, device='cpu'):
         super(LinearToeplitz, self).__init__()
         self.input_features = input_features
         self.output_features = output_features
+
+        self.device = device
 
         # a toeplitz matrix has n_rows + n_cols -1 independent params
         self.toeplitz_params = nn.Parameter(
@@ -31,7 +33,7 @@ class LinearToeplitz(nn.Module):
     def forward(self, x_input):
         weight = create_toeplitz_matrix(self.toeplitz_params,
                                         (self.output_features,
-                                         self.input_features))
+                                         self.input_features)).to(self.device)
         return LinearFunction.apply(x_input, weight, self.bias)
 
     def extra_repr(self):
