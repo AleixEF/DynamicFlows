@@ -32,19 +32,20 @@ class NormalizingFlow(nn.Module):
         
         super(NormalizingFlow, self).__init__()
         
+        self.device = device
         if b_mask is None:
             self.b_mask = f_utils.create_b_mask(frame_dim)
         else:
             self.b_mask = b_mask  # must have shape (1, frame_dim)
         
-        self.b_mask = self.b_mask.to(device)
+        self.b_mask = self.b_mask.to(self.device)
         self.rescale = torch.nn.utils.weight_norm(Rescale(frame_dim))
-
+        
         self.frame_dim = frame_dim
         self.num_flow_layers = num_flow_layers
         self.flow_layers = nn.ModuleList(
             [FlowLayer(frame_dim, esn_dim, hidden_layer_dim, num_hidden_layers, 
-                       toeplitz, self.rescale) 
+                       toeplitz, self.rescale, device=self.device) 
             for _ in range(self.num_flow_layers)]
         )
     
@@ -177,11 +178,12 @@ class NormalizingFlow(nn.Module):
 
 class FlowLayer(nn.Module):
     def __init__(self, frame_dim, esn_dim, hidden_layer_dim, num_hidden_layers, 
-                 toeplitz, rescale_fn):
+                 toeplitz, rescale_fn=None, device='cpu'):
         
         super(FlowLayer, self).__init__()
+        self.device = device
         self.nn = net.NeuralNetwork(frame_dim, esn_dim, hidden_layer_dim, 
-                                 num_hidden_layers, toeplitz)
+                                 num_hidden_layers, toeplitz, device=self.device)
         self.rescale_function = rescale_fn
     
     def f_inverse(self, x_frame, b_mask, h_esn):

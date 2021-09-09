@@ -15,7 +15,7 @@ from .toeplitz import LinearToeplitz
 
 class NeuralNetwork(nn.Module):
     def __init__(self, frame_dim, esn_dim, 
-                 hidden_dim, num_hidden_layers, toeplitz):
+                 hidden_dim, num_hidden_layers, toeplitz, device='cpu'):
         """ The neural network receives two arrays, an x_data array and an h_esn array. The input layer is
         the concatenation of both of them. So the input layer has frame_dim + esn_dim neurons. The net has the following
         layer structure; combined, hidden, ..., output. Each hidden layer is set to have the same number of neurons.
@@ -52,6 +52,12 @@ class NeuralNetwork(nn.Module):
             nn.Tanh()
         )
         self.hidden2intercept = nn.Linear(hidden_dim, frame_dim)
+
+        # Pushing all the weight matrices to the specific device
+        self.combined2hidden = self.combined2hidden.to(device)
+        self.hidden2hidden = self.hidden2hidden.to(device)
+        self.hidden2slope = self.hidden2slope.to(device)
+        self.hidden2intercept = self.hidden2intercept.to(device)
         
     def forward(self, x_frame, h_esn):
         # concat along the frame dim (last dim), not along the batch_size dim
