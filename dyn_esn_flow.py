@@ -317,14 +317,16 @@ def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainlo
             #lr_scheduler.step()
 
             # Loss at the end of each epoch, averaged out by the number of batches in the training dataloader
-            tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)
-            val_NLL_epoch = val_NLL_epoch_sum / len(valloader)
-            
+            #tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)
+            #val_NLL_epoch = val_NLL_epoch_sum / len(valloader)
+            tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader.dataset)
+            val_NLL_epoch = val_NLL_epoch_sum / len(valloader.dataset)
+
             # Record validation loss
             model_monitor.record(val_NLL_epoch)
 
             # Displaying loss every few epochs
-            if tr_verbose == True and (((epoch + 1) % 1) == 0 or epoch == 0):
+            if tr_verbose == True and (((epoch + 1) % 5) == 0 or epoch == 0):
                 
                 print("Epoch: {}/{}, Training NLL:{:.6f}, Validation NLL:{:.6f},  Time_Elapsed:{:.4f} secs".format(epoch+1, 
                 nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed), file=orig_stdout)

@@ -83,12 +83,13 @@ class NormalizingFlow(nn.Module):
             
             # Create a binary tensor of size (batch_size) that shows the real length of each sequence in the batch
             length_mask = f_utils.create_length_mask(frame_instant, batch_size, 
-                                                     seq_lengths)
+                                                     seq_lengths).type(loglike_frame.dtype)
 
             # This will multiply the given log-liklihood values computed for every frame by a binary mask. Frame 
             # log-likelihood values are multiplied by zero, if the true sequence length has been exceeded (this is 
             # figured out using the frame-instant). Results are summed in a variable that should contain the log-likelihood
             # for the entire sequence
+            #print(loglike_frame.device, loglike_frame.dtype, length_mask.dtype, length_mask.device)
             loglike_seq += loglike_frame * length_mask 
             
             # preparing the encoding for the next iteration, i.e. updating the hidden state using the values in the 
@@ -148,7 +149,8 @@ class NormalizingFlow(nn.Module):
         # given a vector z, this is just -0.5 * zT @ z, but we have a batch
         #NOTE: @Aleix, when we take the log of a multi-variate Gaussian distribution,
         # We also have a constant term to account: 0.5*N*log_{e}(2*pi)
-        loglike_frame += -0.5 * f_utils.row_wise_dot_product(z_latent) - 0.5 * z_latent.size(1) * torch.log(torch.Tensor([2*math.pi]))
+        #print(z_latent.device)
+        loglike_frame += -0.5 * f_utils.row_wise_dot_product(z_latent) - (0.5 * z_latent.size(1) * torch.log(torch.Tensor([2*math.pi]))).to(self.device)
         
         # to keep the shape (batch_size, 1)
         return loglike_frame
@@ -201,12 +203,13 @@ class FlowLayer(nn.Module):
             log_det: 2D array of shape (batch_size, 1). The logarithm of the determinant of the Jacobian of f on x_frame
 
         """
-        print(x_frame.device, h_esn.device, b_mask.device)
+        #print(x_frame.device, h_esn.device, b_mask.device)
         slope, intercept = self.nn(b_mask*x_frame, h_esn)
         slope = self.rescale_function(slope)  # Performing weight normalization re-scaling
         z_latent = b_mask*x_frame \
             + (1-b_mask) * ((x_frame-intercept) * torch.exp(-slope))
-        log_det = slope @ (b_mask.T - 1)  # final shape (batch_size, 1)
+        #log_det = slope @ (b_mask.T - 1)  # final shape (batch_size, 1)
+        log_det = slope @ (b_mask.t() - 1) #NOTE: Making this change instead of using .T since it complains weirdly
         return z_latent, log_det
     
     def g_transform(self, z_latent, b_mask, h_esn):

@@ -77,11 +77,11 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
     # a custom dataloader
     training_custom_dataset = CustomSequenceDataset(xtrain=training_dataset_padded,
                                                         lengths=list_of_tr_sequence_lengths,
-                                                        device=device)
+                                                        device='cpu')
     
     validation_custom_dataset = CustomSequenceDataset(xtrain=validation_dataset_padded,
                                                         lengths=list_of_val_sequence_lengths,
-                                                        device=device)
+                                                        device='cpu')
 
     if os.path.isfile(modelfile_path)==False:
 

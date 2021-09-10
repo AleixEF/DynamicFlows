@@ -203,7 +203,7 @@ class ConvergenceMonitor(object):
                 
             else:
                 #print("Consecutive criteria failed, Buffer Reset !!")
-                print("Buffer State:{} reset!!".format(self.epoch_arr)) # Display the buffer state till that time
+                #print("Buffer State:{} reset!!".format(self.epoch_arr)) # Display the buffer state till that time
                 self.epoch_count = 0
                 self.epoch_arr = []
                 self.convergence_flag = False

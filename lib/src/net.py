@@ -63,8 +63,7 @@ class NeuralNetwork(nn.Module):
         
     def forward(self, x_frame, h_esn):
         # concat along the frame dim (last dim), not along the batch_size dim
-        combined = torch.cat((x_frame, h_esn), dim=-1)
-        print(combined.device)
+        combined = torch.cat((x_frame, h_esn), dim=-1).to(self.device)
         q_hidden = self.combined2hidden(combined)
         
         for linear_relu in self.hidden2hidden:

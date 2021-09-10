@@ -34,6 +34,7 @@ class LinearToeplitz(nn.Module):
         weight = create_toeplitz_matrix(self.toeplitz_params,
                                         (self.output_features,
                                          self.input_features)).to(self.device)
+        #print(weight.device)
         return LinearFunction.apply(x_input, weight, self.bias)
 
     def extra_repr(self):
