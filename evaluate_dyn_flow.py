@@ -153,7 +153,7 @@ def main():
                                                                     modelfile_foldername=modelfile_foldername,
                                                                     model_name="dyn_esn_flow",
                                                                     expname_basefolder=expname_basefolder,
-                                                                    logfile_path="testing"
+                                                                    logfile_type="evaluate_{}".format(dataset_type)
                                                                     )
     
         eval_summary_iclass, model_preds_iclass, true_preds_iclass, eval_logfile_all = evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, 
