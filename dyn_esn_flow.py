@@ -117,7 +117,9 @@ class DynESN_gen_model(nn.Module):
                     eval_NLL_loss_batch = -torch.mean(eval_loglike_batch)
                     eval_NLL_loss_epoch_sum += eval_NLL_loss_batch.item()
                 
-                eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
+                #eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
+                eval_loss = eval_NLL_loss_epoch_sum / len(evalloader.dataset) 
+
                 print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
                 print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss), file=orig_stdout)
                 dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((1, -1))
@@ -126,14 +128,25 @@ class DynESN_gen_model(nn.Module):
             llh_all_models = torch.cat(llh_per_model_list, dim=0)
             predictions_all_models = torch.argmax(llh_all_models, dim=0) + 1
 
-        true_predictions = torch.empty(size=(len(evalloader.dataset),)).fill_(class_number) # Make a tensor containing the true labels
-        
+        true_predictions = torch.empty(size=(len(evalloader.dataset),)).fill_(class_number).type(torch.LongTensor) # Make a tensor containing the true labels
+        #print(true_predictions)
+        #print(predictions_all_models)
         # Get the classification summary
         print("Getting the classification summary for data corresponding to Class:{}".format(class_number))
-        eval_summary = classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=True, zero_division=0)
+        
+        if predictions_all_models.is_cuda == True:
+            predictions_all_models = predictions_all_models.cpu()
+        
+        #print(predictions_all_models.dtype, true_predictions.dtype)
+        eval_summary = classification_report(y_true=true_predictions, y_pred=predictions_all_models, output_dict=True, zero_division=0)
         eval_summary["num_sequences"] = len(evalloader.dataset)
-        eval_summary["num_corrects"] = sum(predictions_all_models == true_predictions).item()
-
+        flags = true_predictions == predictions_all_models
+        eval_summary["num_corrects"] = np.count_nonzero(np.array(flags))
+        #eval_summary["accuracy"] = eval_summary["num_corrects"] / eval_summary["num_sequences"]
+        
+        #print(classification_report(y_true=true_predictions, y_pred=predictions_all_models, output_dict=False,  zero_division=0))
+        #print(true_predictions)
+        #print(predictions_all_models)
         sys.stdout = orig_stdout
 
         orig_stdout = sys.stdout
@@ -144,7 +157,7 @@ class DynESN_gen_model(nn.Module):
         print("-"*100, file=orig_stdout)
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]))
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]), file=orig_stdout)
-        #print(classification_report(y_true=true_predictions.numpy(), y_pred=model_predictions.numpy(), output_dict=False,  zero_division=0))
+        #print(classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=False,  zero_division=0))
         print("-"*100)
         print("-"*100, file=orig_stdout)
         with open(os.path.join(datafolder, "class_{}_{}_clsfcn_summary.json".format(class_number, mode)), 'w') as f:

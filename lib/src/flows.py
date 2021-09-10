@@ -205,7 +205,7 @@ class FlowLayer(nn.Module):
         """
         #print(x_frame.device, h_esn.device, b_mask.device)
         slope, intercept = self.nn(b_mask*x_frame, h_esn)
-        slope = self.rescale_function(slope)  # Performing weight normalization re-scaling
+        slope = self.rescale_function(slope, self.device)  # Performing weight normalization re-scaling
         z_latent = b_mask*x_frame \
             + (1-b_mask) * ((x_frame-intercept) * torch.exp(-slope))
         #log_det = slope @ (b_mask.T - 1)  # final shape (batch_size, 1)
@@ -226,7 +226,7 @@ class FlowLayer(nn.Module):
         """
         #print(z_latent.device, h_esn.device, b_mask.device)
         slope, intercept = self.nn(b_mask*z_latent, h_esn)
-        slope = self.rescale_function(slope)  # Performing weightnorm re-scaling
+        slope = self.rescale_function(slope, self.device)  # Performing weightnorm re-scaling
         x_data_space = b_mask*z_latent \
             + (1-b_mask) * (z_latent*torch.exp(slope) + intercept)
         return x_data_space
@@ -242,6 +242,7 @@ class Rescale(torch.nn.Module):
         super(Rescale, self).__init__()
         self.weight = torch.nn.Parameter(torch.ones(1, frame_dim))
 
-    def forward(self, x):
-        x = self.weight * x
+    def forward(self, x, device='cpu'):
+        #print(self.weight.device, x.device)
+        x = self.weight.to(device) * x
         return x

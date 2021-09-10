@@ -162,7 +162,7 @@ def main():
                                                                                                     noise_type=noise_type, dataset_type=dataset_type, 
                                                                                                     epoch_ckpt_num=epoch_ckpt_number)
         
-        weight_iclass = sum(model_preds_iclass == true_preds_iclass).item() / len(true_preds_iclass)
+        weight_iclass = np.count_nonzero(np.array(model_preds_iclass == true_preds_iclass)) / len(true_preds_iclass)
         total_acc += eval_summary_iclass['accuracy'] * weight_iclass
         sum_of_weights += weight_iclass
 
