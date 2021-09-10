@@ -64,7 +64,7 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
     # a custom dataloader
     eval_custom_dataset = CustomSequenceDataset(xtrain=eval_dataset_padded,
                                                 lengths=list_of_sequence_lengths,
-                                                device=device)
+                                                device='cpu')
 
     # Creating and saving training and validation indices for each dataset corresponding to a particular 
     # phoneme class. The training indices are to be used immediately to create a DataLoader object for the training
@@ -133,17 +133,6 @@ def main():
     # Define the basepath for storing the modelfiles
     modelfile_foldername = "models"
 
-    # Get the name of the log file and full path to store the final saved model
-    # Get the log and model file paths
-    logfile_path, modelfile_path = create_log_and_model_folders(class_index=iclass,
-                                                                num_classes=num_classes,
-                                                                logfile_foldername=logfile_foldername,
-                                                                modelfile_foldername=modelfile_foldername,
-                                                                model_name="dyn_esn_flow",
-                                                                expname_basefolder=expname_basefolder,
-                                                                logfile_path="testing"
-                                                                )
-
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
         #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
@@ -155,6 +144,17 @@ def main():
     sum_of_weights = 0.0
 
     for iclass in range(0, num_classes):
+
+        # Get the name of the log file and full path to store the final saved model
+        # Get the log and model file paths
+        logfile_path, modelfile_path = create_log_and_model_folders(class_index=iclass,
+                                                                    num_classes=num_classes,
+                                                                    logfile_foldername=logfile_foldername,
+                                                                    modelfile_foldername=modelfile_foldername,
+                                                                    model_name="dyn_esn_flow",
+                                                                    expname_basefolder=expname_basefolder,
+                                                                    logfile_path="testing"
+                                                                    )
     
         eval_summary_iclass, model_preds_iclass, true_preds_iclass, eval_logfile_all = evaluate_model(eval_datafile=eval_datafile, iclass=iclass, num_classes=num_classes, 
                                                                                                     classmap_file=classmap_file, config_file=config_file, logfile_path=logfile_path, 
