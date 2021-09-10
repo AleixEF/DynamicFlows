@@ -42,14 +42,15 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     """
     # Read the datafiles
     te_DATA, te_keys, te_lengths, phn2int_61, te_PHN = pkl.load(open(fname_dtest, "rb"))
-    tr_plus_val_DATA, tr_plus_val_keys, tr_plus_val_lengths, tr_plus_val_PHN = pkl.load(open(fname_dtrain, "rb"))
+    #tr_plus_val_DATA, tr_plus_val_keys, tr_plus_val_lengths, tr_plus_val_PHN = pkl.load(open(fname_dtrain, "rb"))
+    tr_DATA, tr_keys, tr_lengths, tr_PHN = pkl.load(open(fname_dtrain, "rb"))
 
     # Partition the training data into training + validation datasets
-    tr_DATA, tr_keys, tr_lengths, tr_PHN, val_DATA, val_keys, val_lengths, val_PHN = split_tr_val_data(tr_plus_val_DATA, 
-                                                                                                    tr_plus_val_keys, 
-                                                                                                    tr_plus_val_lengths, 
-                                                                                                    tr_plus_val_PHN, 
-                                                                                                    tr_to_val_split=tr_to_val_split)
+    #tr_DATA, tr_keys, tr_lengths, tr_PHN, val_DATA, val_keys, val_lengths, val_PHN = split_tr_val_data(tr_plus_val_DATA, 
+    #                                                                                                tr_plus_val_keys, 
+    #                                                                                                tr_plus_val_lengths, 
+    #                                                                                                tr_plus_val_PHN, 
+    #                                                                                                tr_to_val_split=tr_to_val_split)
 
     if verbose:
         print("Data loaded from files.")
@@ -58,10 +59,10 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     data_tr, label_tr = to_phoneme_level(tr_DATA)
     data_te, label_te = to_phoneme_level(te_DATA)
 
-    if not val_DATA is None:
-        data_val, label_val = to_phoneme_level(val_DATA)
-    else:
-        data_val, label_val = None, None
+    #if not val_DATA is None:
+    #    data_val, label_val = to_phoneme_level(val_DATA)
+    #else:
+    #    data_val, label_val = None, None
 
     # Checkout table 3 at
     # https://www.intechopen.com/books/speech-technologies/phoneme-recognition-on-the-timit-database
@@ -78,8 +79,8 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
         data_tr, label_tr = remove_label(data_tr, label_tr, phn2int_39) # Removes the label '-' from the list of labels
         data_te, label_te = remove_label(data_te, label_te, phn2int_39)
         
-        if not val_DATA is None:
-            data_val, label_val = remove_label(data_val, label_val, phn2int_39)
+        #if not val_DATA is None:
+        #    data_val, label_val = remove_label(data_val, label_val, phn2int_39)
 
         phn2int_39.pop('-', None) # Removes the label from the dictionary
         phn2int = phn2int_39
@@ -97,14 +98,14 @@ def prepare_data(fname_dtest=None, classmap_existing=None, fname_dtrain=None, n_
     xtrain, ytrain = getsubset(data_tr, label_tr, iphn)
     xtest, ytest = getsubset(data_te, label_te, iphn)
 
-    if val_DATA is None:
-        xval, yval = None, None
-    else:
-        xval, yval = getsubset(data_val, label_val, iphn)
-
+    #if val_DATA is None:
+    #    xval, yval = None, None
+    #else:
+    #    xval, yval = getsubset(data_val, label_val, iphn)
+    
     class2phn, class2int = get_phoneme_mapping(iphn, phn2int, n_taken=len(taken))
 
-    return xtrain, ytrain, xtest, ytest, class2phn, class2int, xval, yval
+    return xtrain, ytrain, xtest, ytest, class2phn, class2int, None, None #, xval, yval
 
 
 if __name__ == "__main__":
@@ -200,13 +201,15 @@ if __name__ == "__main__":
     assert (len(classmap) == nclasses)
 
     # Create only the classes that are left
-    write_class_wise_files(class2int=class2int, data_outfiles=train_outfiles, x=xtrain, y=ytrain)
+    write_class_wise_files(class2int=class2int, data_outfiles=train_outfiles, x=xtrain, y=ytrain, \
+        val_data_outfiles=val_outfiles, tr_to_val_split=tr_to_val_split)
+        
     write_class_wise_files(class2int=class2int, data_outfiles=test_outfiles, x=xtest, y=ytest)
 
-    if (not xval is None) and (not yval is None):
-        write_class_wise_files(class2int=class2int, data_outfiles=val_outfiles, x=xval, y=yval)
-    else:
-        pass
+    #if (not xval is None) and (not yval is None):
+    #    write_class_wise_files(class2int=class2int, data_outfiles=val_outfiles, x=xval, y=yval)
+    #else:
+    #    pass
         
     #for i, ic in class2int.items():
     #    assert(not os.path.isfile(train_outfiles[i]))

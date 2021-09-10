@@ -196,13 +196,32 @@ def write_classmap(class2phn, folder):
         outfile.write(out_str+"\n")
     return 0
 
-def write_class_wise_files(class2int, data_outfiles, x, y):
+def write_class_wise_files(class2int, data_outfiles, x, y, val_data_outfiles=None, tr_to_val_split=1.0):
     """Write down the data files partitioned on a class-wise basis to appropriate .pkl files"""
     for i, ic in class2int.items():
+        
         assert(not os.path.isfile(data_outfiles[i]))
         x_c = x[y == ic]
-        pkl.dump(x_c, open(data_outfiles[i], "wb"))
-    
+        
+        # Get the number of validation sequences
+        num_tr_plus_val_sequences = len(x_c)
+        num_tr_sequences = int(tr_to_val_split * num_tr_plus_val_sequences)
+        num_val_sequences = num_tr_plus_val_sequences - num_tr_sequences
+
+        if num_val_sequences > 0:
+
+            indices = np.random.permutation(num_tr_plus_val_sequences).tolist() # get the indices and randomly permute them
+            tr_indices = indices[:num_tr_sequences] # get the indices corresponding to the training data
+            val_indices = indices[num_tr_sequences:num_tr_sequences + num_val_sequences] # get the indices corresponding to the validation data
+            x_c_train = x_c[tr_indices]
+            x_c_val = x_c[val_indices]
+            pkl.dump(x_c_train, open(data_outfiles[i], "wb"))
+            pkl.dump(x_c_val, open(val_data_outfiles[i], "wb"))
+        
+        else:
+
+            pkl.dump(x_c, open(data_outfiles[i], "wb"))
+
     return None
 
 def get_phoneme_mapping(iphn, phn2int, n_taken=0):
