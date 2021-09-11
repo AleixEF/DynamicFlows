@@ -65,7 +65,7 @@ seq_length = 10
 hidden_dim = 16
 n_flow_layers = 4
 
-n_epochs = 100
+n_epochs = 10
 learning_rate = 1e-3
 
 
@@ -111,12 +111,12 @@ for model_idx, nf in enumerate(models):
         if epoch > 0 and val_loss_evol[model_idx, epoch] > val_loss_evol[model_idx, epoch-1]:
             break
         
-    model_filename = "trained_models/" + str(model_idx) + ".pt"
-    torch.save(nf.state_dict(), model_filename)
+    #model_filename = "trained_models/" + str(model_idx) + ".pt"
+    #torch.save(nf.state_dict(), model_filename)
     
-echo_state.save("trained_models")
+#echo_state.save("trained_models")
 
-plot_loss(train_loss_evol, val_loss_evol, "results")
+#plot_loss(train_loss_evol, val_loss_evol, "results")
 plt.show()
 
     
