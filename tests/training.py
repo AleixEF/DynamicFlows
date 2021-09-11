@@ -18,8 +18,8 @@ def plot_loss(train_loss_per_model, val_loss_per_model, folder2savefigs):
     for model_idx in range(n_models):
         plt.figure()
         plt.title("loss evol model %d" % model_idx)
-        plt.plot(train_loss_per_model[model_idx, :], label="train")
-        plt.plot(val_loss_per_model[model_idx, :], label="val")
+        plt.plot(train_loss_per_model[model_idx], label="train")
+        plt.plot(val_loss_per_model[model_idx], label="val")
         plt.legend()
         plt.savefig(folder2savefigs + "/loss" + str(model_idx) + ".png")
     return
@@ -75,8 +75,8 @@ models = [flows.NormalizingFlow(frame_dim, hidden_dim,
 optimizers = [torch.optim.SGD(nf.parameters(), lr=learning_rate) for nf in models]
 echo_state = esn.EchoStateNetwork(frame_dim)
 
-train_loss_evol = np.zeros((n_models, n_epochs))
-val_loss_evol = np.zeros((n_models, n_epochs))
+train_loss_evol = [[] for _ in range(n_models)]
+val_loss_evol = [[] for _ in range(n_models)]
 
 
 for model_idx, nf in enumerate(models):
@@ -101,8 +101,8 @@ for model_idx, nf in enumerate(models):
         val_loss = compute_validation_loss(nf, echo_state, val_path, 
                                            n_val_batches)
     
-        train_loss_evol[model_idx, epoch] = train_loss
-        val_loss_evol[model_idx, epoch] = val_loss
+        train_loss_evol[model_idx].append(train_loss)
+        val_loss_evol[model_idx].append(val_loss)
         
         print("training loss", train_loss)
         print("val_loss", val_loss)
