@@ -37,9 +37,9 @@ def compute_validation_loss(nf, esn_model, folder2load, n_val_batches):
     return loss
     
 
-def validate(nf, esn_model, sequences_batch):
+def validate(gmm, esn_model, sequences_batch):
     with torch.no_grad():
-        loglike = nf.loglike_sequence(sequences_batch, esn_model)
+        loglike = gmm.loglike_sequence(sequences_batch, esn_model)
         loss = -torch.mean(loglike)
     return loss.item()
         
