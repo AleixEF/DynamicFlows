@@ -153,12 +153,12 @@ class DynESN_gen_model(nn.Module):
         eval_logfile_all = os.path.join(datafolder, "testing.log")
         f_tmp = open(eval_logfile_all, 'a')
         sys.stdout = f_tmp
-        print("-"*100)
+        #print("-"*100)
         print("-"*100, file=orig_stdout)
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]))
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]), file=orig_stdout)
         #print(classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=False,  zero_division=0))
-        print("-"*100)
+        #print("-"*100)
         print("-"*100, file=orig_stdout)
         with open(os.path.join(datafolder, "class_{}_{}_clsfcn_summary.json".format(class_number, mode)), 'w') as f:
             f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
@@ -261,8 +261,8 @@ def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainlo
 
     print("------------------------------ Training begins --------------------------------- \n")
     print("------------------------------ Training begins --------------------------------- \n", file=orig_stdout)
-    #print("Config: {} \n".format())
-    #print("\n Config: {} \n".format(), file=orig_stdout)
+    print("Config: {} \n".format(options["dyn_esn_flow"]))
+    print("\n Config: {} \n".format(options["dyn_esn_flow"]), file=orig_stdout)
 
     #NOTE: Often two print statements are given because we want to save something to logfile and also to console output
     # Might modify this later on, to just kep for the logfile

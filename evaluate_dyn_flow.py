@@ -174,7 +174,9 @@ def main():
     print("-"*100, file=orig_stdout)
     print("Overall accuracy for {} data : {}".format(dataset_type, total_acc))
     print("Overall accuracy for {} data : {}".format(dataset_type, total_acc), file=orig_stdout)
-    
+    print("-"*100)
+    print("-"*100, file=orig_stdout)
+
     sys.stdout = orig_stdout
 
     sys.exit(0)
