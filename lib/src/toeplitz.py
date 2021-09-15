@@ -33,7 +33,7 @@ class LinearToeplitz(nn.Module):
     def forward(self, x_input):
         weight = create_toeplitz_matrix(self.toeplitz_params,
                                         (self.output_features,
-                                         self.input_features)).to(self.device)
+                                         self.input_features), device=self.device).to(self.device)
         #print(weight.device)
         return LinearFunction.apply(x_input, weight, self.bias)
 
@@ -82,8 +82,9 @@ class LinearFunction(Function):
         return grad_input, grad_weight, grad_bias
 
 
-def create_toeplitz_matrix(parameters, matrix_shape):
-    toep_matrix = torch.zeros(matrix_shape)
+def create_toeplitz_matrix(parameters, matrix_shape, device='cpu'):
+    toep_matrix = torch.zeros(matrix_shape).to(device)
+    parameters = parameters.to(device)
     i_start = matrix_shape[0]
     i_end = i_start + matrix_shape[1]
     for i in range(matrix_shape[0]):

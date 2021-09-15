@@ -2,13 +2,13 @@
     "set_mul_gpu":true,
 
     "convg_monitor":{
-        "tol":2e-2,
+        "tol":1.5e-2,
         "max_iter":3
     },
 
     "train":
     {
-        "n_epochs": 100,
+        "n_epochs": 150,
         "batch_size": 128
     },
 
@@ -29,7 +29,7 @@
         "spectral_radius":0.8, 
         "hidden_layer_dim":30, 
         "n_flow_layers":4, 
-        "num_hidden_layers":1,
+        "num_hidden_layers":2,
         "learning_rate":1e-4, 
         "use_toeplitz":true
     }
