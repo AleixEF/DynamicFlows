@@ -60,7 +60,7 @@ class DynESN_gen_model(nn.Module):
             model_file = self.list_of_model_files[iclass]
             esn_model_file = self.list_of_esn_param_files[iclass]
 
-            print("Loading model for class : {} found at:{}".format(iclass+1, model_file))
+            #print("Loading model for class : {} found at:{}".format(iclass+1, model_file))
             dyn_esn_flow_model = DynESN_flow(num_categories=self.num_classes,
                             batch_size=self.options["train"]["batch_size"],
                             device=self.device,
@@ -120,7 +120,7 @@ class DynESN_gen_model(nn.Module):
                 #eval_loss = eval_NLL_loss_epoch_sum / len(evalloader)
                 eval_loss = eval_NLL_loss_epoch_sum / len(evalloader.dataset) 
 
-                print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
+                #print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss))
                 print("Test loss for Dyn_ESN_Model {}: {}".format(i+1, eval_loss), file=orig_stdout)
                 dyn_esn_model_llh = torch.cat(dyn_esn_flow_model_LL, dim=0).reshape((1, -1))
                 llh_per_model_list.append(dyn_esn_model_llh)
@@ -259,17 +259,24 @@ def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainlo
     tr_losses = [] # Empty list to store NLL for every epoch to plot it later on
     val_losses = [] # Empty list to store NLL for every epoch to plot it later on
 
-    print("------------------------------ Training begins --------------------------------- \n")
-    print("------------------------------ Training begins --------------------------------- \n", file=orig_stdout)
-    print("Config: {} \n".format(options["dyn_esn_flow"]))
-    print("\n Config: {} \n".format(options["dyn_esn_flow"]), file=orig_stdout)
+    if tr_verbose == True:
+        print("------------------------------ Training begins --------------------------------- \n")
+        print("------------------------------ Training begins --------------------------------- \n", file=orig_stdout)
+        print("Config: {} \n".format(options["dyn_esn_flow"]))
+        print("\n Config: {} \n".format(options["dyn_esn_flow"]), file=orig_stdout)
 
-    #NOTE: Often two print statements are given because we want to save something to logfile and also to console output
-    # Might modify this later on, to just kep for the logfile
-    print("No. of trainable parameters: {}\n".format(total_num_trainable_params), file=orig_stdout)
-    print("No. of trainable parameters: {}\n".format(total_num_trainable_params))
-    print("Training model for Phoneme: {}".format(class_phn), file=orig_stdout)
-    print("Training model for Phoneme: {}".format(class_phn))
+        #NOTE: Often two print statements are given because we want to save something to logfile and also to console output
+        # Might modify this later on, to just kep for the logfile
+        print("No. of trainable parameters: {}\n".format(total_num_trainable_params), file=orig_stdout)
+        print("No. of trainable parameters: {}\n".format(total_num_trainable_params))
+        print("Training model for Phoneme: {}".format(class_phn), file=orig_stdout)
+        print("Training model for Phoneme: {}".format(class_phn))
+    else:
+
+        print("------------------------------ Training begins --------------------------------- \n")
+        print("Config: {} \n".format(options["dyn_esn_flow"]))
+        print("No. of trainable parameters: {}\n".format(total_num_trainable_params))
+        print("Training model for Phoneme: {} \n".format(class_phn))
 
     # Introducing a way to save model progress when KeyboardInterrupt is encountered
     try:
@@ -347,6 +354,11 @@ def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainlo
                 print("Epoch: {}/{}, Training NLL:{:.6f}, Validation NLL:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
                 nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed))
             
+            elif tr_verbose == False and (((epoch + 1) % 5) == 0 or epoch == 0):
+
+                print("Epoch: {}/{}, Training NLL:{:.6f}, Validation NLL:{:.6f}, Time_Elapsed:{:.4f} secs".format(epoch+1, 
+                nepochs, tr_NLL_epoch, val_NLL_epoch, time_elapsed))
+            
             # Checkpointing the model every few  epochs
             #if (((epoch + 1) % 5) == 0 or epoch == 0) and save_checkpoints == "all": 
                 # Checkpointing model every few epochs, in case of grid_search is being done, save_chkpoints = None
@@ -362,20 +374,30 @@ def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainlo
 
             # Check monitor flag
             if model_monitor.monitor(epoch=epoch+1) == True:
+
+                if tr_verbose == True:
+                    print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1), file=orig_stdout)
+                
                 print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1))
-                print("Training convergence attained! Saving model at Epoch:{}".format(epoch+1), file=orig_stdout)
                 save_model(dyn_esn_flow_model, modelfile_path)
                 break
 
     except KeyboardInterrupt:
 
-        print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1), file=orig_stdout)
-        print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
+        if tr_verbose == True:
+            print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1), file=orig_stdout)
+            print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
+        else:
+            print("Interrupted!! ...saving the model at epoch:{}".format(epoch+1))
+
         save_model(dyn_esn_flow_model, modelfile_path)
     
     # Saving the ESN encoding parameters as well!
-    print("Saving ESN model parameters at Epoch:{}".format(epoch+1))
-    print("Saving ESN model parameters at Epoch:{}".format(epoch+1), file=orig_stdout)
+    if tr_verbose == True:
+        print("Saving ESN model parameters at Epoch:{}".format(epoch+1))
+        print("Saving ESN model parameters at Epoch:{}".format(epoch+1), file=orig_stdout)
+    else:
+        print("Saving ESN model parameters at Epoch:{}".format(epoch+1))
 
     if model_monitor.monitor(epoch=epoch+1) == False:
         # Save whatever is left at the end of training as the 'converged' set of parameters
