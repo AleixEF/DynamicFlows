@@ -34,7 +34,10 @@ class EchoStateNetwork(object):
         self.frame_dim = frame_dim
         self.esn_dim = esn_dim
         self.device = device
-        
+       
+        #NOTE: Experimental use of leaking rate
+        self.alpha = 0.5
+
         # We need to know batch_size (a data property), to initialize it
         self.h_esn = None
         
@@ -54,8 +57,10 @@ class EchoStateNetwork(object):
         Returns: h_esn: 2D array of shape (batch_size, esn_dim)
 
         """
-        self.h_esn = torch.tanh(
-            self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
+        #self.h_esn = torch.tanh(
+        #    self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t())                                 
+        
+        self.h_esn = self.alpha * torch.tanh(self.h_esn @ self.Wres.t() + x_frame @ self.Wfb.t()) + (1 - self.alpha) * self.h_esn
         return self.h_esn
 
     def save(self, full_filename):
