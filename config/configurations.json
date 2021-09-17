@@ -29,7 +29,21 @@
         "spectral_radius":0.8, 
         "hidden_layer_dim":30, 
         "n_flow_layers":4, 
+        "leaking_rate":0.5,
         "num_hidden_layers":2,
+        "learning_rate":1e-4, 
+        "use_toeplitz":true
+    },
+
+    "gmm_esn":
+    {
+        "frame_dim":40, 
+        "esn_dim":1000, 
+        "conn_per_neuron":10, 
+        "spectral_radius":0.8, 
+        "hidden_layer_dim":30, 
+        "leaking_rate":1.0,
+        "num_components":5, 
         "learning_rate":1e-4, 
         "use_toeplitz":true
     }

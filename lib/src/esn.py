@@ -13,7 +13,7 @@ import os
 
 class EchoStateNetwork(object):
     def __init__(self, frame_dim, esn_dim=500, 
-                 conn_per_neur=10, spectr_rad=0.8, device='cpu'):
+                 conn_per_neur=10, spectr_rad=0.8, device='cpu', leaking_rate=1.0):
         """ A reservoir of neurons capable to receive a batch of sequences and to encode it in a batch of hidden states.
         The input data should not take big values or the tanh function used for the recurrence will saturate to +-1.
         It is recommended to check the saturation does not occur by plotting the hidden state vector after the encoding.
@@ -35,8 +35,8 @@ class EchoStateNetwork(object):
         self.esn_dim = esn_dim
         self.device = device
        
-        #NOTE: Experimental use of leaking rate
-        self.alpha = 0.5
+        #NOTE: Experimental use of leaking rate / 'alpha'
+        self.alpha = leaking_rate
 
         # We need to know batch_size (a data property), to initialize it
         self.h_esn = None
