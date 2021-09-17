@@ -4,7 +4,6 @@ import numpy as np
 from torch.autograd import Variable
 import os
 from torch import nn
-from torch.nn.modules.module import register_module_backward_hook
 from lib.src import esn, mixture
 from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
