@@ -43,16 +43,16 @@ class DynamicMixture(nn.Module):
     def loglike_frame(self, x_frame, h_esn):
         # careful, h_esn has shape (batch_size, esn_dim)
         # so here we can build a batch of gaussian mixture models
-        mixture_weights, means, covariances = self.gaussian_net(h_esn)
+        mixture_weights, means, standard_devs = self.gaussian_net(h_esn)
         
         batch_size, _ = h_esn.shape
         means_new_shape = (batch_size, self.n_components, self.frame_dim)
-        covs_new_shape = (batch_size, self.n_components, self.frame_dim)
+        stds_new_shape = (batch_size, self.n_components, self.frame_dim)
         
         # now we build a batch of Gaussian mixture models of n_components each
         categorical = D.Categorical(mixture_weights)
         gaussians = D.Independent(D.Normal(
-             means.view(means_new_shape), covariances.view(covs_new_shape)), 1)
+             means.view(means_new_shape), standard_devs.view(stds_new_shape)), 1)
         batch_mixture_models = D.MixtureSameFamily(categorical, gaussians)
         
         loglike = batch_mixture_models.log_prob(x_frame)

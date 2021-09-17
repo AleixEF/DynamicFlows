@@ -7,6 +7,7 @@ Created on Sat Sep 11 14:44:58 2021
 """
 
 from torch import nn
+import torch
 
 
 class MixtureGaussiansNet(nn.Module):
@@ -27,12 +28,16 @@ class MixtureGaussiansNet(nn.Module):
         # because it will return the mean for each component
         self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
 
-        # assuming diagonal covariance matrices, sigmoid ensures positive semi-definite
-        self.hidden2covariances = nn.Sequential(
+        # we return the standard deviations assuming diagonal cov matrix
+        self.hidden2stds = nn.Sequential(
             nn.Linear(hidden_dim, n_components*frame_dim),
             nn.Sigmoid())
         
-    
+        self.scale_factor = nn.parameter.Parameter(
+            torch.rand((n_components*frame_dim)),
+            requires_grad=True)
+        
+        
     def forward(self, h_esn):
         """
         Parameters
@@ -52,9 +57,17 @@ class MixtureGaussiansNet(nn.Module):
 
         """
         hidden = self.input2hidden(h_esn)
-        
         mixture_weights = self.hidden2mixture_weights(hidden)
         means = self.hidden2means(hidden)
-        covariances = self.hidden2covariances(hidden)
-        return mixture_weights, means, covariances
+        standard_devs = torch.abs(self.scale_factor) * self.hidden2stds(hidden)
+        
+        """
+        max_bias = torch.max(self.input2hidden[0].bias).item()
+        max_hidden = torch.max(hidden).item()
+        max_esn = torch.max(h_esn).item()
+        max_cov = torch.max(covariances).item()
+        max_scale = torch.max(self.scale_factor).item()
+        """
+        
+        return mixture_weights, means, standard_devs
     

@@ -13,6 +13,7 @@ import torch
 from context import esn, mixture
 
 
+
 def plot_loss(train_loss_per_model, val_loss_per_model, folder2savefigs):
     n_models = len(train_loss_per_model)
     for model_idx in range(n_models):
@@ -66,7 +67,7 @@ seq_length = 10
 
 hidden_dim = 16
 
-n_epochs = 100
+n_epochs = 30
 learning_rate = 1e-3
 
 
