@@ -5,7 +5,7 @@ import os
 import json
 from functools import partial
 from parse import parse
-from lib.utils.data_utils import read_classmap, write_classmap, flip, split_tr_val_data, \
+from ..utils.data_utils import read_classmap, write_classmap, flip, split_tr_val_data, \
     phn61_to_phn39, remove_label, to_phoneme_level, getsubset, normalize, write_class_wise_files, get_phoneme_mapping
 import argparse
 

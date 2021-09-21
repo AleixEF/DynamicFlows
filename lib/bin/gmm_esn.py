@@ -4,13 +4,13 @@ import numpy as np
 from torch.autograd import Variable
 import os
 from torch import nn
-from lib.src import esn, mixture
+from ..src import esn, mixture
 from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
-from lib.utils.training_utils import push_model, count_params, save_model, ConvergenceMonitor
+from ..utils.training_utils import push_model, count_params, save_model, ConvergenceMonitor
 from sklearn.metrics import classification_report
 import json
-from lib.utils.data_utils import NDArrayEncoder
+from ..utils.data_utils import NDArrayEncoder
 
 class GMM_ESN_gen_model(nn.Module):
 
@@ -119,7 +119,7 @@ class GMM_ESN(nn.Module):
 
     def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
                 spectral_radius=0.8, hidden_layer_dim=15, num_components=1,
-                learning_rate=0.8, use_toeplitz=True):
+                learning_rate=0.8, use_toeplitz=True, leaking_rate=1.0):
         super(GMM_ESN, self).__init__()
 
         self.num_categories = num_categories
@@ -128,6 +128,7 @@ class GMM_ESN(nn.Module):
         self.hidden_layer_dim = hidden_layer_dim
         self.lr = learning_rate
         self.device = device
+        self.leaking_rate = leaking_rate
 
         self.esn_dim = esn_dim
         self.frame_dim = frame_dim
@@ -169,7 +170,7 @@ def train(gmm_esn_model, options, class_number, class_phn, nepochs, trainloader,
 
     #TODO: Needs to be completed
     optimizer = torch.optim.SGD(gmm_esn_model.parameters(), lr=gmm_esn_model.lr)
-    lr_scheduler = scheduler.StepLR(optimizer=optimizer, step_size=nepochs//3, gamma=0.9)
+    lr_scheduler = scheduler.StepLR(optimizer=optimizer, step_size=nepochs//10, gamma=0.9)
 
     # Creating an object of ConvergenceMonitor for tracking the relative change 
     # in training loss (and enforcing a stopping criterion)
@@ -181,7 +182,8 @@ def train(gmm_esn_model, options, class_number, class_phn, nepochs, trainloader,
     starttime = timer()
 
     # Push the model to the device
-    gmm_esn_model = push_model(mdl=gmm_esn_model, mul_gpu_flag=options["set_mul_gpu"])
+    #gmm_esn_model = push_model(mdl=gmm_esn_model, mul_gpu_flag=options["set_mul_gpu"])
+    gmm_esn_model = gmm_esn_model.to(gmm_esn_model.device)
 
     # Set the model to training mode
     gmm_esn_model.train()
@@ -281,7 +283,7 @@ def train(gmm_esn_model, options, class_number, class_phn, nepochs, trainloader,
                         val_NLL_running_loss = 0.0
 
             # Updating the learning rate scheduler 
-            #lr_scheduler.step()
+            lr_scheduler.step()
 
             # Loss at the end of each epoch, averaged out by the number of batches in the training dataloader
             #tr_NLL_epoch = tr_NLL_epoch_sum / len(trainloader)

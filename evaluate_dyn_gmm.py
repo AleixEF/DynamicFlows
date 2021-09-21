@@ -8,9 +8,9 @@ import json
 import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
 from lib.utils.data_utils import custom_collate_fn
-from gmm_esn import GMM_ESN_gen_model
+from lib.bin.gmm_esn import GMM_ESN_gen_model
 from lib.utils.training_utils import create_log_and_model_folders
-from load_models import ModelLoader
+from lib.bin.load_models import ModelLoader
 
 def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, list_of_model_files, 
                 logfile_path = None, modelfile_path = None, noise_type="clean", dataset_type="test", epoch_ckpt_num=None):

@@ -3,8 +3,8 @@ import numpy as np
 import pickle as pkl
 import argparse
 import os
-from lib.utils.hmm import init_emission_means, init_diagonal_cov_matrices, init_transition_matrices
-from lib.utils.hmm import GaussianHmm
+from ..utils.hmm import init_emission_means, init_diagonal_cov_matrices, init_transition_matrices
+from ..utils.hmm import GaussianHmm
 
 def generate_and_save_dataset(output_data_folder, iclass, frame_dim, num_sequences,
                             tr_to_val_split, tr_to_test_split, 

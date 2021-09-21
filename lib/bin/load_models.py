@@ -1,8 +1,8 @@
 import os
 import torch
 from torch import nn
-from dyn_esn_flow import DynESN_flow
-from gmm_esn import GMM_ESN
+from .dyn_esn_flow import DynESN_flow
+from .gmm_esn import GMM_ESN
 
 class ModelLoader(nn.Module):
 

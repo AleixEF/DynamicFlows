@@ -8,8 +8,8 @@ import json
 import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
 from lib.utils.data_utils import custom_collate_fn
-from dyn_esn_flow import DynESN_gen_model
-from load_models import ModelLoader
+from lib.bin.dyn_esn_flow import DynESN_gen_model
+from lib.bin.load_models import ModelLoader
 from lib.utils.training_utils import create_log_and_model_folders
 
 def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, 

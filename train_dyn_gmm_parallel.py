@@ -2,8 +2,6 @@ import multiprocessing as mp
 import torch
 from torch import nn
 import os
-import sys
-import matplotlib.pyplot as plt
 import argparse
 import pickle as pkl
 import torch
@@ -12,7 +10,7 @@ import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
 from lib.utils.data_utils import custom_collate_fn
 from lib.utils.data_utils import NDArrayEncoder
-from gmm_esn import GMM_ESN, train
+from lib.bin.gmm_esn import GMM_ESN, train
 from lib.utils.training_utils import create_log_and_model_folders
 
 def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, logfile_path = None, 

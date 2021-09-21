@@ -35,6 +35,18 @@
         "use_toeplitz":true
     },
 
+    "dyn_rnn_flow":
+    {
+        "frame_dim":40, 
+        "encoding_dim":60, 
+        "hidden_layer_dim":15, 
+        "n_flow_layers":4, 
+        "num_hidden_layers":1,
+        "learning_rate":1e-4, 
+        "model_type":"rnn",
+        "use_toeplitz":false
+    },
+
     "gmm_esn":
     {
         "frame_dim":40, 

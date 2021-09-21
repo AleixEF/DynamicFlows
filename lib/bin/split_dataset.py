@@ -3,7 +3,7 @@ import sys
 import argparse
 import os
 import pickle as pkl
-from lib.utils.data_utils import read_classmap,to_phoneme_level,flip, phn61_to_phn39,\
+from ..utils.data_utils import read_classmap,to_phoneme_level,flip, phn61_to_phn39,\
     remove_label, getsubset, normalize
 from functools import partial
 
