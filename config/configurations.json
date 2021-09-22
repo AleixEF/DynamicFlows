@@ -31,7 +31,8 @@
         "n_flow_layers":4, 
         "leaking_rate":0.5,
         "num_hidden_layers":2,
-        "learning_rate":1e-4, 
+        "learning_rate":1e-4,
+        "model_type":"esn", 
         "use_toeplitz":true
     },
 
@@ -56,7 +57,19 @@
         "hidden_layer_dim":30, 
         "leaking_rate":1.0,
         "num_components":5, 
+        "learning_rate":1e-4,
+        "model_type":"esn", 
+        "use_toeplitz":true
+    },
+    
+    "gmm_rnn":
+    {
+        "frame_dim":40, 
+        "encoding_dim":60, 
+        "hidden_layer_dim":30, 
+        "num_components":5, 
         "learning_rate":1e-4, 
+        "model_type":"rnn",
         "use_toeplitz":true
     }
 }

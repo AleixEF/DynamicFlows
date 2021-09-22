@@ -118,7 +118,7 @@ class DynESN_gen_model(nn.Module):
 class DynESN_flow(nn.Module):
 
     def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
-                spectral_radius=0.8, hidden_layer_dim=15, n_flow_layers=4, alpha=1.0, num_hidden_layers=1, 
+                spectral_radius=0.8, hidden_layer_dim=15, n_flow_layers=4, leaking_rate=1.0, num_hidden_layers=1, 
                 learning_rate=0.8, use_toeplitz=True):
         super(DynESN_flow, self).__init__()
 
@@ -135,7 +135,7 @@ class DynESN_flow(nn.Module):
         self.frame_dim = frame_dim
         self.conn_per_neuron = conn_per_neuron
         self.spectral_radius = spectral_radius
-        self.leaking_rate = alpha
+        self.leaking_rate = leaking_rate
 
         self.use_toeplitz = use_toeplitz
 

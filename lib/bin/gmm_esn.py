@@ -4,7 +4,7 @@ import numpy as np
 from torch.autograd import Variable
 import os
 from torch import nn
-from ..src import esn, mixture
+from ..src import esn, mixture, rnn_flows
 from torch.optim import lr_scheduler as scheduler
 from timeit import default_timer as timer
 from ..utils.training_utils import push_model, count_params, save_model, ConvergenceMonitor
@@ -117,9 +117,9 @@ class GMM_ESN_gen_model(nn.Module):
         
 class GMM_ESN(nn.Module):
 
-    def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, esn_dim=500, conn_per_neuron=10, 
-                spectral_radius=0.8, hidden_layer_dim=15, num_components=1,
-                learning_rate=0.8, use_toeplitz=True, leaking_rate=1.0):
+    def __init__(self, num_categories=39, device='cpu', batch_size=64, frame_dim=40, 
+                esn_dim=500, conn_per_neuron=10, spectral_radius=0.8, hidden_layer_dim=15, 
+                num_components=5, learning_rate=0.8, use_toeplitz=True, model_type="esn", leaking_rate=1.0):
         super(GMM_ESN, self).__init__()
 
         self.num_categories = num_categories
@@ -130,6 +130,7 @@ class GMM_ESN(nn.Module):
         self.device = device
         self.leaking_rate = leaking_rate
 
+        self.model_type = model_type
         self.esn_dim = esn_dim
         self.frame_dim = frame_dim
         self.conn_per_neuron = conn_per_neuron
@@ -149,6 +150,7 @@ class GMM_ESN(nn.Module):
                                                 frame_dim=self.frame_dim,
                                                 esn_dim=self.esn_dim,
                                                 hidden_dim=self.hidden_layer_dim,
+                                                encoding_model_type=self.model_type,
                                                 use_toeplitz=self.use_toeplitz,
                                                 device=self.device)
 
@@ -158,10 +160,10 @@ class GMM_ESN(nn.Module):
         the forward direction `X (data)` ----> `Z (latent)`
 
         Args:
-            sequence_batch ([torch.Tensor]]): A batch of tensors, as input (max_seq_len, batch_size, frame_dim)
-            esn_encoding ([object]): An object of the ESN model class (shouldn't be trained)
+            sequence_batch ([torch.Tensor]]): A batch of tensors, as input (max_seq_len, batch_size, frame_dim),
+            sequence_batch_lengths ([torch.Tensor]): A batch of tensors that contain the lengths of each sequence, as input (batch_size)
         """
-        loglike_sequence = self.gmm_model.loglike_sequence(sequence_batch, self.esn_model, seq_lengths=sequence_batch_lengths)
+        loglike_sequence = self.gmm_model.loglike_sequence(sequence_batch, esn_object=self.esn_model, seq_lengths=sequence_batch_lengths)
         return loglike_sequence
         
 

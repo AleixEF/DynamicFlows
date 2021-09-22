@@ -1,3 +1,4 @@
+from lib.bin.dyn_rnn_flow import DynRNN_gen_model
 import torch
 import os
 import sys
@@ -9,12 +10,13 @@ import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
 from lib.utils.data_utils import custom_collate_fn
 from lib.bin.dyn_esn_flow import DynESN_gen_model
+from lib.bin.dyn_rnn_flow import DynRNN_gen_model
 from lib.bin.load_models import ModelLoader
 from lib.utils.training_utils import create_log_and_model_folders
 
 def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_file, 
                 list_of_model_files, logfile_path = None, modelfile_path = None,
-                noise_type="clean", dataset_type="test", epoch_ckpt_num=None):
+                noise_type="clean", dataset_type="test", model_type="dyn_esn_flow", epoch_ckpt_num=None):
 
     datafolder = "".join(eval_datafile.split("/")[i]+"/" for i in range(len(eval_datafile.split("/")) - 1)) # Get the datafolder
     
@@ -86,12 +88,17 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
     # Current fix: provide epoch_ckpt_number = None, to load the bets / converged model files, else set the 
     # epoch_ckpt_number as options["train"]["num_epochs"] to load the model saved at the last epoch.
     
-    dyn_esn_flow_gen = DynESN_gen_model(full_modelfile_path=modelfile_path, options=options, device=device, num_classes=num_classes,
-                                        list_of_model_files = list_of_model_files,
-                                        eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=epoch_ckpt_num)
+    if model_type == "dyn_esn_flow":
+        dyn_flow_gen = DynESN_gen_model(full_modelfile_path=modelfile_path, options=options, device=device, num_classes=num_classes,
+                                            list_of_model_files = list_of_model_files,
+                                            eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=epoch_ckpt_num)
+    elif model_type == "dyn_rnn_flow":
+        dyn_flow_gen = DynRNN_gen_model(full_modelfile_path=modelfile_path, options=options, device=device, num_classes=num_classes,
+                                            list_of_model_files = list_of_model_files,
+                                            eval_batch_size=options["eval"]["batch_size"], epoch_ckpt_number=epoch_ckpt_num)
 
     # Run the model training
-    model_predictions, true_predictions, eval_summary, eval_logfile_all = dyn_esn_flow_gen.predict_sequences(class_number=iclass+1, 
+    model_predictions, true_predictions, eval_summary, eval_logfile_all = dyn_flow_gen.predict_sequences(class_number=iclass+1, 
                                                                                                         evalloader=eval_dataloader, 
                                                                                                         mode=dataset_type, 
                                                                                                         eval_logfile_path=logfile_path
@@ -101,9 +108,9 @@ def evaluate_model(eval_datafile, iclass, num_classes, classmap_file, config_fil
 
 def main():
 
-    usage = "Pass arguments to train a Dynamic ESN-based Normalizing flow model on a single speciifed dataset of phoneme"
+    usage = "Pass arguments to train a Dynamic RNN-based Normalizing flow model on a single speciifed dataset of phoneme"
     
-    parser = argparse.ArgumentParser(description="Enter relevant arguments for training one Dynamic ESN-Based Normalizing flow model")
+    parser = argparse.ArgumentParser(description="Enter relevant arguments for training one Dynamic RNN-Based Normalizing flow model")
     parser.add_argument("--eval_data", help="Enter the full path to the training dataset containing all the phonemes (train.<nfeats>.pkl", type=str)
     parser.add_argument("--num_classes", help="Enter the number of classes", type=int)
     parser.add_argument("--class_index", help="Enter the class index (0, 1, 2, ..., <num_classes> -1), with <num_classes>=39", type=int, default=None)
@@ -113,6 +120,7 @@ def main():
     parser.add_argument("--dataset_type", help="Enter the type of dataset (train / test / val)", type=str, default="test")
     parser.add_argument("--noise_type", help="Enter the type of noise, by default -- clean", type=str, default="clean")
     parser.add_argument("--epoch_ckpt_number", help="Enter the type of noise, by default -- clean", type=int, default=None)
+    parser.add_argument("--model_type", help="Enter the type of encoding model (dyn_esn_flow / dyn_rnn_flow), by default -- dyn_esn_flow", type=str, default="dyn_esn_flow")
 
     args = parser.parse_args() 
     eval_datafile = args.eval_data
@@ -124,6 +132,7 @@ def main():
     noise_type = args.noise_type
     dataset_type = args.dataset_type
     epoch_ckpt_number = args.epoch_ckpt_number
+    model_type = args.model_type
 
     # Define the basepath for storing the logfiles
     logfile_foldername = "log"
@@ -133,8 +142,7 @@ def main():
 
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
-        #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
-        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/{}_{}/".format(num_classes, model_type, noise_type)
     else:
         pass
     
@@ -151,7 +159,7 @@ def main():
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu>0) else "cpu")
     model_loader = ModelLoader(full_modelfile_path=os.path.join(expname_basefolder, modelfile_foldername),
                                 options=options,
-                                model_type="dyn_esn_flow",
+                                model_type=model_type,
                                 device=device,
                                 num_classes=num_classes)
 
@@ -165,7 +173,7 @@ def main():
                                                                     num_classes=num_classes,
                                                                     logfile_foldername=logfile_foldername,
                                                                     modelfile_foldername=modelfile_foldername,
-                                                                    model_name="dyn_esn_flow",
+                                                                    model_name=model_type,
                                                                     expname_basefolder=expname_basefolder,
                                                                     logfile_type="evaluate_{}".format(dataset_type)
                                                                     )
@@ -175,7 +183,8 @@ def main():
                                                                                                     list_of_model_files=list_of_model_files,
                                                                                                     logfile_path=logfile_path, 
                                                                                                     modelfile_path=modelfile_path,
-                                                                                                    noise_type=noise_type, dataset_type=dataset_type)
+                                                                                                    noise_type=noise_type, dataset_type=dataset_type,
+                                                                                                    model_type=model_type)
         
         weight_iclass = np.count_nonzero(np.array(model_preds_iclass == true_preds_iclass)) / len(true_preds_iclass)
         total_acc += eval_summary_iclass['accuracy'] * weight_iclass

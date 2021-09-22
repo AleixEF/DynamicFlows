@@ -8,11 +8,10 @@ Created on Sat Sep 11 14:44:58 2021
 
 import torch
 from torch import nn
-from torch._C import device
 from .toeplitz import LinearToeplitz
 
 class MixtureGaussiansNet(nn.Module):
-    def __init__(self, esn_dim, frame_dim, n_components, hidden_dim, 
+    def __init__(self, encoding_dim, frame_dim, n_components, hidden_dim, 
                 use_toeplitz=True, device='cpu'):
         super(MixtureGaussiansNet, self).__init__()
         
@@ -28,7 +27,7 @@ class MixtureGaussiansNet(nn.Module):
         # the input is the esn encoding vector, so the input dim is esn_dim
         if use_toeplitz == False:
             self.input2hidden = nn.Sequential(
-                nn.Linear(esn_dim, hidden_dim),
+                nn.Linear(encoding_dim, hidden_dim),
                 nn.ReLU())
             
             # a softmax function will be applied in order to get the mixure weights
@@ -53,7 +52,7 @@ class MixtureGaussiansNet(nn.Module):
 
         else:
             self.input2hidden = nn.Sequential(
-                LinearToeplitz(esn_dim, hidden_dim, device=self.device),
+                LinearToeplitz(encoding_dim, hidden_dim, device=self.device),
                 nn.ReLU())
             
             # a softmax function will be applied in order to get the mixure weights
@@ -82,11 +81,11 @@ class MixtureGaussiansNet(nn.Module):
         #self.hidden2covariances = self.hidden2covariances.to(self.device)
         self.hidden2stddevs = self.hidden2stddevs.to(self.device)
     
-    def forward(self, h_esn):
+    def forward(self, h_encoded):
         """
         Parameters
         ----------
-        h_esn : torch tensor of shape (batch_size, esn_dim)
+        h_encoded : torch tensor of shape (batch_size, encoding_dim)
             The encoding for each frame in the batch of frames
 
         Returns
@@ -101,8 +100,8 @@ class MixtureGaussiansNet(nn.Module):
 
         """
         
-        h_esn = h_esn.to(self.device)
-        hidden = self.input2hidden(h_esn)
+        h_encoded = h_encoded.to(self.device)
+        hidden = self.input2hidden(h_encoded)
         mixture_weights = self.hidden2mixture_weights(hidden)
         means = self.hidden2means(hidden)
         std_devs = self.hidden2stddevs(hidden)
