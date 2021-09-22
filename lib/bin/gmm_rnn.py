@@ -154,7 +154,7 @@ class GMM_RNN(nn.Module):
         return loglike_sequence
         
 
-def train(gmm_rnn_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
+def train_gmm_rnn(gmm_rnn_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
         tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed

@@ -22,7 +22,8 @@ class DynamicMixture(nn.Module):
         self.encoding_dim = encoding_dim
         self.encoding_model_type = encoding_model_type
         self.gaussian_net = MixtureGaussiansNet(encoding_dim, frame_dim, 
-                                                n_components, hidden_dim, use_toeplitz=use_toeplitz, device=self.device)
+                                                n_components, hidden_dim, 
+                                                use_toeplitz=use_toeplitz, device=self.device)
         self.n_components = n_components
         self.frame_dim = frame_dim
 

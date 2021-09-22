@@ -1,20 +1,19 @@
 import multiprocessing as mp
 import torch
-from torch import nn
 import os
 import argparse
 import pickle as pkl
 import torch
 import json
-import numpy as np
 from lib.utils.data_utils import pad_data, CustomSequenceDataset, get_dataloader
 from lib.utils.data_utils import custom_collate_fn
 from lib.utils.data_utils import NDArrayEncoder
-from lib.bin.dyn_esn_flow import DynESN_flow, train
+from lib.bin.dyn_esn_flow import DynESN_flow, train_esn_flow
+from lib.bin.dyn_rnn_flow import DynRNN_flow, train_rnn_flow
 from lib.utils.training_utils import create_log_and_model_folders
 
-def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, logfile_path = None, 
-                modelfile_path = None,  esn_modelfile_path=None, expname_basefolder=None):
+def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, model_type="dyn_esn_flow",
+                logfile_path = None, modelfile_path = None,  esn_modelfile_path=None, expname_basefolder=None):
     
     #datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
     
@@ -106,40 +105,41 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
         device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu>0) else "cpu")
         print("Device Used:{}".format(device))
 
-        # Initialize the model
-        dyn_esn_flow_model = DynESN_flow(num_categories=num_classes,
-                                batch_size=options["train"]["batch_size"],
-                                device=device,
-                                **options["dyn_esn_flow"])
-
         tr_verbose = False #NOTE: Make this False when parallelization is going to be run 
         save_checkpoints = "some"
         plot_dir_per_class = os.path.join(expname_basefolder, "plot_data")
         os.makedirs(plot_dir_per_class, exist_ok=True)
 
-        # Run the model training
+        # Initialize the model
+        if model_type == "dyn_esn_flow":
+            dyn_esn_flow_model = DynESN_flow(num_categories=num_classes,
+                                    batch_size=options["train"]["batch_size"],
+                                    device=device,
+                                    **options[model_type])
+            
+            # Run the model training
+            tr_losses, val_losses, dyn_esn_flow_model = train_esn_flow(dyn_esn_flow_model, options, iclass+1, iclass_phn, nepochs=options["train"]["n_epochs"],
+                                                trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
+                                                esn_modelfile_path=esn_modelfile_path, tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
+            
+        elif model_type == "dyn_rnn_flow":
+            dyn_rnn_flow_model = DynRNN_flow(num_categories=num_classes,
+                                    batch_size=options["train"]["batch_size"],
+                                    device=device,
+                                    **options[model_type])
 
-        tr_losses, val_losses, dyn_esn_flow_model = train(dyn_esn_flow_model, options, iclass+1, iclass_phn, nepochs=options["train"]["n_epochs"],
-                                            trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
-                                            esn_modelfile_path=esn_modelfile_path, tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
-        
-        #if tr_verbose == True:
-        #    plt.figure()
-        #    plt.plot(tr_losses, label="Training NLL")
-        #    plt.plot(val_losses, label="Validation NLL")
-        #    plt.legend()
-        #    plt.savefig(os.path.join(plot_dir_per_class, "tr_val_NLL_class_{}.pdf".format(iclass+1)))
+            tr_losses, val_losses, dyn_rnn_flow_model = train_rnn_flow(dyn_rnn_flow_model, options, iclass+1, iclass_phn, nepochs=options["train"]["n_epochs"],
+                                                trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
+                                                tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
 
         if not tr_losses is None:
             losses_model = {}
             losses_model["tr_losses"] = tr_losses
             losses_model["val_losses"] = val_losses
-
-            with open(os.path.join(plot_dir_per_class, 'dyn_esn_flow_class_{}_tr_losses.json'.format(iclass+1)), 'w') as f:
+            with open(os.path.join(plot_dir_per_class, '{}_class_{}_tr_losses.json'.format(model_type, iclass+1)), 'w') as f:
                 f.write(json.dumps(losses_model, cls=NDArrayEncoder, indent=2))
-        
+    
     else:
-
         print("Model already created at:{}".format(modelfile_path))
 
     return None
@@ -158,6 +158,7 @@ def main():
     parser.add_argument("--config", help="Enter full path to the .json file containing the model hyperparameters", type=str, default="./config/configurations.json")
     parser.add_argument("--expname_basefolder", help="Enter the basepath to save the logfile, modefile", type=str, default=None)
     parser.add_argument("--noise_type", help="Enter the type of noise, by default -- clean", type=str, default="clean")
+    parser.add_argument("--model_type", help="Enter the type of encoding model (dyn_esn_flow / dyn_rnn_flow), by default -- dyn_esn_flow", type=str, default="dyn_esn_flow")
 
     args = parser.parse_args() 
     train_datafile = args.train_data
@@ -169,6 +170,7 @@ def main():
     config_file = args.config
     expname_basefolder = args.expname_basefolder
     noise_type = args.noise_type
+    model_type = args.model_type
 
     #print(iclass_arr)
     #n_models = 5
@@ -185,8 +187,7 @@ def main():
 
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
-        #expname_basefolder = "./exp/hmm_gen_data/{}_classes/dyn_esn_flow_{}/".format(num_classes, noise_type)
-        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/dyn_esn_flow_{}/".format(num_classes, noise_type)
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/{}_{}/".format(num_classes, model_type, noise_type)
     else:
         pass
     
@@ -202,19 +203,21 @@ def main():
                                                                     num_classes=num_classes,
                                                                     logfile_foldername=logfile_foldername,
                                                                     modelfile_foldername=modelfile_foldername,
-                                                                    model_name="dyn_esn_flow",
+                                                                    model_name=model_type,
                                                                     expname_basefolder=expname_basefolder
                                                                     )
 
-        modelfile_name = "class_{}_dyn_esn_flow_ckpt_converged.pt".format(iclass+1)
-        esn_modelfile_name = "class_{}_esn_encoding_params_converged.pt".format(iclass+1)
-
+        modelfile_name = "class_{}_{}_ckpt_converged.pt".format(iclass+1, model_type)
         modelfile_path = os.path.join(modelfile_path_folder, modelfile_name)
-        esn_modelfile_path = os.path.join(modelfile_path_folder, esn_modelfile_name)
-
         logfile_path_lists.append(logfile_path)
         modelfile_path_lists.append(modelfile_path)
-        esn_modelfile_path_lists.append(esn_modelfile_path)
+
+        if model_type == "dyn_esn_flow":
+            esn_modelfile_name = "class_{}_esn_encoding_params_converged.pt".format(iclass+1)
+            esn_modelfile_path = os.path.join(modelfile_path_folder, esn_modelfile_name)
+            esn_modelfile_path_lists.append(esn_modelfile_path)
+        else:
+            esn_modelfile_path_lists.append(None)
 
     #iclass = int(iclass)
     #train_model(train_datafile=train_datafile, val_datafile=val_datafile, iclass=iclass, num_classes=num_classes, classmap_file=classmap_file, config_file=config_file,
@@ -231,7 +234,7 @@ def main():
     result = [train.get() for train in multi_training]
     """
     pool.starmap(train_model,
-        [(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, \
+        [(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, model_type, \
         logfile_path_lists[iclass], modelfile_path_lists[iclass], \
         esn_modelfile_path_lists[iclass], expname_basefolder) for iclass in range(0, num_classes)])
 

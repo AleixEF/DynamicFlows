@@ -168,7 +168,7 @@ class DynESN_flow(nn.Module):
         return loglike_sequence
         
 
-def train(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
+def train_esn_flow(dyn_esn_flow_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
             esn_modelfile_path=None, tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed

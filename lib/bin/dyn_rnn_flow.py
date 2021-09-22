@@ -159,8 +159,8 @@ class DynRNN_flow(nn.Module):
         return loglike_sequence
         
 
-def train(dyn_rnn_flow_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
-            esn_modelfile_path=None, tr_verbose=True, save_checkpoints="some"):
+def train_rnn_flow(dyn_rnn_flow_model, options, class_number, class_phn, nepochs, trainloader, valloader, logfile_path=None, modelfile_path=None, 
+            tr_verbose=True, save_checkpoints="some"):
 
     #TODO: Needs to be completed
     optimizer = torch.optim.SGD(dyn_rnn_flow_model.parameters(), lr=dyn_rnn_flow_model.lr)
