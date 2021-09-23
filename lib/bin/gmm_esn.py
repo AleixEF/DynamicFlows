@@ -148,7 +148,7 @@ class GMM_ESN(nn.Module):
 
         self.gmm_model = mixture.DynamicMixture(n_components=self.num_components,
                                                 frame_dim=self.frame_dim,
-                                                esn_dim=self.esn_dim,
+                                                encoding_dim=self.esn_dim,
                                                 hidden_dim=self.hidden_layer_dim,
                                                 encoding_model_type=self.model_type,
                                                 use_toeplitz=self.use_toeplitz,

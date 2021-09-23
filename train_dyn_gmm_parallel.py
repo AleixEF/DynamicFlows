@@ -12,7 +12,7 @@ from lib.bin.gmm_esn import GMM_ESN, train_gmm_esn
 from lib.bin.gmm_rnn import GMM_RNN, train_gmm_rnn
 from lib.utils.training_utils import create_log_and_model_folders
 
-def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, model_type = "gmm_esn",
+def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file, options, model_type = "gmm_esn",
                 logfile_path = None, modelfile_path = None,  esn_modelfile_path=None, expname_basefolder=None):
     
     #datafolder = "".join(train_datafile.split("/")[i]+"/" for i in range(len(train_datafile.split("/")) - 1)) # Get the datafolder
@@ -25,7 +25,7 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
     print("Validation Dataset: {}".format(val_class_inputfile))
 
     assert os.path.isfile(classmap_file) == True, "Class map not present, kindly run prepare_data.py" 
-    assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
+    #assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
     assert os.path.isfile(train_class_inputfile) == True, "Dataset not present yet, kindly create the .pkl file by running TIMIT pre-processing script" 
 
     # Get the device, currently this assigns 1 GPU if available, else device is set as CPU
@@ -43,8 +43,8 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
     #num_classes, _ = parse("./data/train.{:d}_{:d}.pkl", train_class_inputfile)
 
     # Load the configurations file
-    with open(config_file) as cfg:
-        options = json.load(cfg)
+    #with open(config_file) as cfg:
+    #    options = json.load(cfg)
 
     # Load the dataset
     training_dataset = pkl.load(open(train_class_inputfile, 'rb'))
@@ -117,12 +117,9 @@ def train_model(train_datafile, val_datafile, iclass, num_classes, classmap_file
         os.makedirs(plot_dir_per_class, exist_ok=True)
 
         # Run the model training
-
-        tr_losses, val_losses, gmm_esn_model = train_gmm_esn(gmm_esn_model, options, iclass+1, iclass_phn, nepochs=options["train"]["n_epochs"],
-                                            trainloader=training_dataloader, valloader=val_dataloader, logfile_path=logfile_path, modelfile_path=modelfile_path,
-                                            esn_modelfile_path=esn_modelfile_path, tr_verbose=tr_verbose, save_checkpoints=save_checkpoints)
         
         # Initialize the model
+        print("Model_type:{}".format(model_type))
         if model_type == "gmm_esn":
             gmm_esn_model = GMM_ESN(num_categories=num_classes,
                                     batch_size=options["train"]["batch_size"],
@@ -198,6 +195,11 @@ def main():
     # Define the basepath for storing the modelfiles
     modelfile_foldername = "models"
 
+    # Load the configurations file
+    assert os.path.isfile(config_file) == True, "Configurations file not present, kindly create required file"
+    with open(config_file) as cfg:
+        options = json.load(cfg)
+
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
         expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/{}_{}/".format(num_classes, model_type, noise_type)
@@ -220,7 +222,7 @@ def main():
                                                                     expname_basefolder=expname_basefolder
                                                                     )
 
-        modelfile_name = "class_{}_{}_ckpt_converged.pt".format(iclass+1, model_type)
+        modelfile_name = "class_{}_gmm_{}_ckpt_converged.pt".format(iclass+1, options[model_type]["model_type"])
         modelfile_path = os.path.join(modelfile_path_folder, modelfile_name)
         logfile_path_lists.append(logfile_path)
         modelfile_path_lists.append(modelfile_path)
@@ -247,7 +249,7 @@ def main():
     result = [train.get() for train in multi_training]
     """
     pool.starmap(train_model,
-        [(train_datafile, val_datafile, iclass, num_classes, classmap_file, config_file, model_type,\
+        [(train_datafile, val_datafile, iclass, num_classes, classmap_file, options, model_type,\
         logfile_path_lists[iclass], modelfile_path_lists[iclass], \
         esn_modelfile_path_lists[iclass], expname_basefolder) for iclass in range(0, num_classes)])
 

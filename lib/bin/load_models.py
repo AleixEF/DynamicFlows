@@ -1,3 +1,5 @@
+from torch._C import set_flush_denormal
+from torch.nn.modules.module import ModuleAttributeError
 from lib.bin.gmm_rnn import GMM_RNN
 import os
 import torch
@@ -43,6 +45,7 @@ class ModelLoader(nn.Module):
                 self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_dyn_{}_flow_ckpt_converged.pt".format(i+1, 
                     self.options[self.model_name]["model_type"])) 
                             for i in range(num_classes)]
+            self.list_of_esn_param_files = None
         
         elif self.model_name == "gmm_rnn":
             if not epoch_ckpt_number is None:
@@ -53,6 +56,7 @@ class ModelLoader(nn.Module):
                 self.list_of_model_files = [os.path.join(full_modelfile_path, "class_{}_gmm_{}_ckpt_converged.pt".format(i+1, 
                     self.options[self.model_name]["model_type"])) 
                             for i in range(num_classes)]
+            self.list_of_esn_param_files = None
             
         elif self.model_name == "gmm_esn":
             if not epoch_ckpt_number is None:
@@ -75,11 +79,15 @@ class ModelLoader(nn.Module):
 
     def check_model_files_exist(self):
 
-            for i in range(len(self.list_of_model_files)):
-                assert os.path.isfile(self.list_of_model_files[i]) == True, "{} is not present!!".format(self.list_of_model_files[i])
+        for i in range(len(self.list_of_model_files)):
+            assert os.path.isfile(self.list_of_model_files[i]) == True, "{} is not present!!".format(self.list_of_model_files[i])
+        try:
+            if not self.list_of_esn_param_files is None:
                 assert os.path.isfile(self.list_of_esn_param_files[i]) == True, "{} is not present!!".format(self.list_of_esn_param_files[i])
+        except ModuleAttributeError:
+            print("ESN files not present for {} model".format(self.model_name))
 
-            return None
+        return None
 
     def create_list_of_models(self):
 
@@ -89,12 +97,12 @@ class ModelLoader(nn.Module):
 
             model_file = self.list_of_model_files[iclass]
             #print("Loading model for class : {} found at:{}".format(iclass+1, model_file))
-            if self.model_type == "dyn_esn_flow":
+            if self.model_name == "dyn_esn_flow":
                 esn_model_file = self.list_of_esn_param_files[iclass]
                 dyn_esn_flow_model = DynESN_flow(num_categories=self.num_classes,
                                 batch_size=self.options["train"]["batch_size"],
                                 device=self.device,
-                                **self.options["dyn_esn_flow"])
+                                **self.options[self.model_name])
 
                 # Load the normalizing flow network parameters
                 dyn_esn_flow_model.load_state_dict(torch.load(model_file))
@@ -106,11 +114,11 @@ class ModelLoader(nn.Module):
                 # Append the list of models
                 list_of_models.append(dyn_esn_flow_model)
             
-            elif self.model_type == "dyn_rnn_flow":
+            elif self.model_name == "dyn_rnn_flow":
                 dyn_rnn_flow_model = DynRNN_flow(num_categories=self.num_classes,
                                                 device=self.device,
                                                 batch_size=self.options["train"]["batch_size"],
-                                                **self.options)
+                                                **self.options[self.model_name])
 
                 # Load the normalizing flow network parameters
                 print("Loading Dyn-RNN model for class : {} found at:{}".format(iclass+1, model_file))
@@ -119,12 +127,12 @@ class ModelLoader(nn.Module):
                 # Append the list of models
                 list_of_models.append(dyn_rnn_flow_model)
             
-            elif self.model_type == "gmm_esn":    
+            elif self.model_name == "gmm_esn":    
                 esn_model_file = self.list_of_esn_param_files[iclass]
                 gmm_esn_model = GMM_ESN(num_categories=self.num_classes,
                                 batch_size=self.options["train"]["batch_size"],
                                 device=self.device,
-                                **self.options[self.model_type])
+                                **self.options[self.model_name])
 
                 # Load the normalizing flow network parameters
                 gmm_esn_model.load_state_dict(torch.load(model_file))
@@ -136,11 +144,11 @@ class ModelLoader(nn.Module):
                 # Append the list of models
                 list_of_models.append(gmm_esn_model)
             
-            elif self.model_type == "gmm_rnn":    
+            elif self.model_name == "gmm_rnn":    
                 gmm_rnn_model = GMM_RNN(num_categories=self.num_classes,
                                 batch_size=self.options["train"]["batch_size"],
                                 device=self.device,
-                                **self.options[self.model_type])
+                                **self.options[self.model_name])
 
                 # Load the normalizing flow network parameters
                 print("Loading GMM-RNN model for class : {} found at:{}".format(iclass+1, model_file))

@@ -120,7 +120,7 @@ def main():
     parser.add_argument("--dataset_type", help="Enter the type of dataset (train / test / val)", type=str, default="test")
     parser.add_argument("--noise_type", help="Enter the type of noise, by default -- clean", type=str, default="clean")
     parser.add_argument("--epoch_ckpt_number", help="Enter the type of noise, by default -- clean", type=int, default=None)
-    parser.add_argument("--model_type", help="Enter the type of encoding model (dyn_esn_flow / dyn_rnn_flow), by default -- dyn_esn_flow", type=str, default="dyn_esn_flow")
+    parser.add_argument("--model_name", help="Enter the type of encoding model (dyn_esn_flow / dyn_rnn_flow), by default -- dyn_esn_flow", type=str, default="dyn_esn_flow")
 
     args = parser.parse_args() 
     eval_datafile = args.eval_data
@@ -132,7 +132,7 @@ def main():
     noise_type = args.noise_type
     dataset_type = args.dataset_type
     epoch_ckpt_number = args.epoch_ckpt_number
-    model_type = args.model_type
+    model_name = args.model_name
 
     # Define the basepath for storing the logfiles
     logfile_foldername = "log"
@@ -142,7 +142,7 @@ def main():
 
     # Incase of HMM uncomment this line for the expname_basefolder
     if expname_basefolder == "hmm":
-        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/{}_{}/".format(num_classes, model_type, noise_type)
+        expname_basefolder = "./exp/hmm_gen_data/{}_classes_fixed_lengths_parallel/{}_{}/".format(num_classes, model_name, noise_type)
     else:
         pass
     
@@ -159,7 +159,7 @@ def main():
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu>0) else "cpu")
     model_loader = ModelLoader(full_modelfile_path=os.path.join(expname_basefolder, modelfile_foldername),
                                 options=options,
-                                model_type=model_type,
+                                model_name=model_name,
                                 device=device,
                                 num_classes=num_classes)
 
@@ -173,7 +173,7 @@ def main():
                                                                     num_classes=num_classes,
                                                                     logfile_foldername=logfile_foldername,
                                                                     modelfile_foldername=modelfile_foldername,
-                                                                    model_name=model_type,
+                                                                    model_name=model_name,
                                                                     expname_basefolder=expname_basefolder,
                                                                     logfile_type="evaluate_{}".format(dataset_type)
                                                                     )
@@ -184,7 +184,7 @@ def main():
                                                                                                     logfile_path=logfile_path, 
                                                                                                     modelfile_path=modelfile_path,
                                                                                                     noise_type=noise_type, dataset_type=dataset_type,
-                                                                                                    model_type=model_type)
+                                                                                                    model_type=model_name)
         
         weight_iclass = np.count_nonzero(np.array(model_preds_iclass == true_preds_iclass)) / len(true_preds_iclass)
         total_acc += eval_summary_iclass['accuracy'] * weight_iclass

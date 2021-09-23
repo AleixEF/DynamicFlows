@@ -286,7 +286,10 @@ def train_rnn_flow(dyn_rnn_flow_model, options, class_number, class_phn, nepochs
             val_NLL_epoch = val_NLL_epoch_sum / len(valloader.dataset)
 
             # Record validation loss
-            model_monitor.record(val_NLL_epoch)
+            if epoch > 10:
+                model_monitor.record(val_NLL_epoch)
+            else:
+                pass
 
             # Displaying loss every few epochs
             if tr_verbose == True and (((epoch + 1) % 5) == 0 or epoch == 0):
