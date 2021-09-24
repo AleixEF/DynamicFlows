@@ -29,8 +29,9 @@ class DynamicMixture(nn.Module):
 
         if self.encoding_model_type.lower() == "rnn":
             self.recurrent_net = nn.RNNCell(frame_dim, encoding_dim, nonlinearity="relu")
-        elif self.encoding_model_type.lower() == "lstm":
-            self.recurrent_net = nn.LSTMCell(input_size=frame_dim, hidden_size=encoding_dim)
+        #elif self.encoding_model_type.lower() == "lstm":
+            #TODO: LSTM Cell functionality needs to be fixed, takes two inputs (h_0, c_0)
+        #    self.recurrent_net = nn.LSTMCell(input_size=frame_dim, hidden_size=encoding_dim)
         elif self.encoding_model_type.lower() == "gru":
             self.recurrent_net = nn.GRUCell(input_size=frame_dim, hidden_size=encoding_dim)    
     

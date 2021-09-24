@@ -37,8 +37,9 @@ class NormalizingFlow(nn.Module):
 
         if model_type.lower() == "rnn":
             self.recurrent_net = nn.RNNCell(frame_dim, encoding_dim, nonlinearity="relu")
-        elif model_type.lower() == "lstm":
-            self.recurrent_net = nn.LSTMCell(input_size=frame_dim, hidden_size=encoding_dim)
+        #elif model_type.lower() == "lstm":
+            #TODO: LSTM Cell functionality needs to be fixed, takes two inputs (h_0, c_0)
+        #    self.recurrent_net = nn.LSTMCell(input_size=frame_dim, hidden_size=encoding_dim)
         elif model_type.lower() == "gru":
             self.recurrent_net = nn.GRUCell(input_size=frame_dim, hidden_size=encoding_dim)
     
@@ -53,7 +54,7 @@ class NormalizingFlow(nn.Module):
         
         for frame_instant, x_frame in enumerate(x_sequence):
             
-            loglike_frame = self.loglike_frame(x_frame, h_encoding) 
+            loglike_frame = self.loglike_frame(x_frame, h_encoding)
             
             # Create a binary tensor of size (batch_size) that shows the real length of each sequence in the batch
             length_mask = f_utils.create_length_mask(frame_instant, batch_size, 

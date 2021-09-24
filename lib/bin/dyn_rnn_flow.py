@@ -46,6 +46,8 @@ class DynRNN_gen_model(nn.Module):
 
         print("----------------------------- Evaluation Begins -----------------------------\n")
         print("------------------------------ Evaluation begins --------------------------------- \n", file=orig_stdout)
+        print("Config: {} \n".format(self.options["dyn_rnn_flow"]))
+        print("Config: {} \n".format(self.options["dyn_rnn_flow"]), file=orig_stdout)
 
         with torch.no_grad():
         
@@ -104,10 +106,11 @@ class DynRNN_gen_model(nn.Module):
         sys.stdout = f_tmp
         #print("-"*100)
         print("-"*100, file=orig_stdout)
+        print("Config: {} \n".format(self.options["dyn_rnn_flow"]))
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]))
         print("Accuracy for Class:{}-{} data:{} ({}/{})".format(class_number, mode, eval_summary['accuracy'], eval_summary["num_corrects"], eval_summary["num_sequences"]), file=orig_stdout)
         #print(classification_report(y_true=true_predictions.numpy(), y_pred=predictions_all_models.numpy(), output_dict=False,  zero_division=0))
-        #print("-"*100)
+        print("-"*100)
         print("-"*100, file=orig_stdout)
         with open(os.path.join(datafolder, "class_{}_{}_clsfcn_summary.json".format(class_number, mode)), 'w') as f:
             f.write(json.dumps(eval_summary, cls=NDArrayEncoder, indent=2))
