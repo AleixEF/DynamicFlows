@@ -37,8 +37,8 @@ class MixtureGaussiansNet(nn.Module):
 
             # the output dim must be n_components*frame_dim
             # because it will return the mean for each component
-            #self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
-            self.hidden2means = LinearToeplitz(hidden_dim, n_components*frame_dim, self.device)
+            self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
+            #self.hidden2means = LinearToeplitz(hidden_dim, n_components*frame_dim, self.device)
 
             # assuming diagonal covariance matrices, sigmoid ensures positive semi-definite
             #self.hidden2covariances = nn.Sequential(
@@ -47,8 +47,8 @@ class MixtureGaussiansNet(nn.Module):
             
             #NOTE: Instead of covs, we model standard devs, maybe it solves the problem making these
             # covs easier to work with
-            #self.hidden2stddevs = nn.Linear(hidden_dim, n_components * frame_dim)
-            self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Sigmoid())
+            self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Sigmoid())
+            #self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Sigmoid())
 
         else:
             self.input2hidden = nn.Sequential(
@@ -62,8 +62,8 @@ class MixtureGaussiansNet(nn.Module):
 
             # the output dim must be n_components*frame_dim
             # because it will return the mean for each component
-            self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
-
+            #self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
+            self.hidden2means = LinearToeplitz(hidden_dim, n_components*frame_dim, self.device)
             # assuming diagonal covariance matrices, sigmoid ensures positive semi-definite
             #self.hidden2covariances = nn.Sequential(
             #    nn.Linear(hidden_dim, n_components*frame_dim),
@@ -71,7 +71,8 @@ class MixtureGaussiansNet(nn.Module):
             
             #NOTE: Instead of covs, we model standard devs, maybe it solves the problem making these
             # covs easier to work with
-            self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Sigmoid())
+            #self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Sigmoid())
+            self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Sigmoid())
 
         # Pushing all the weight matrices to the specific device
         self.input2hidden = self.input2hidden.to(self.device)
@@ -99,17 +100,17 @@ class MixtureGaussiansNet(nn.Module):
             diagonal of all mixtures (concatenated).
 
         """
-        
+        #print("Encoded's device:{}, Encoding shape:{}, Pushing device:{}".format(h_encoded.device, h_encoded.shape, self.device))
         h_encoded = h_encoded.to(self.device)
         hidden = self.input2hidden(h_encoded)
         mixture_weights = self.hidden2mixture_weights(hidden)
         means = self.hidden2means(hidden)
         std_devs = self.hidden2stddevs(hidden)
-
-        assert (mixture_weights < 0).any() == False, "Mix. wts are negative"
-        assert torch.isnan(means).any() == False, "NaNs encountered in means"
-        assert torch.isnan(mixture_weights).any() == False, "NaNs encountered in mix.weights"
-        assert torch.isnan(std_devs).any() == False, "NaNs encountered in std_devs"
+        
+        #assert (mixture_weights.detach() < 0).any() == False, "Mix. wts are negative"
+        #assert torch.isnan(means.detach()).any() == False, "NaNs encountered in means"
+        #assert torch.isnan(mixture_weights.detach()).any() == False, "NaNs encountered in mix.weights"
+        #assert torch.isnan(std_devs.detach()).any() == False, "NaNs encountered in std_devs"
         
         return mixture_weights, means, std_devs
     

@@ -58,9 +58,10 @@ class DynamicMixture(nn.Module):
 
             max_seq_length, batch_size, frame_dim = x_sequence.shape
             loglike_seq = 0
-            h_encoding = torch.zeros((batch_size, self.encoding_dim))
+            h_encoding = torch.zeros((batch_size, self.encoding_dim)).to(self.device)
             for frame_instant, x_frame in enumerate(x_sequence):
                 
+                #print(x_frame.device, h_encoding.device, self.recurrent_net.weight_hh.device, self.recurrent_net.bias_hh.device, self.recurrent_net.weight_ih.device, self.recurrent_net.bias_ih.device)
                 loglike_frame = self.loglike_frame(x_frame, h_encoding) 
                 
                 length_mask = f_utils.create_length_mask(frame_instant, batch_size, 

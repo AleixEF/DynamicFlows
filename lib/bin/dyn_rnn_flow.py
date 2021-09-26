@@ -53,6 +53,7 @@ class DynRNN_gen_model(nn.Module):
         
             for i, dyn_rnn_flow_model in enumerate(self.list_of_models):
                 
+                dyn_rnn_flow_model = push_model(mdl=dyn_rnn_flow_model, mul_gpu_flag=self.options["set_mul_gpu"])
                 dyn_rnn_flow_model.eval()  
                 #eval_running_loss = 0.0
                 eval_NLL_loss_epoch_sum = 0.0

@@ -24,6 +24,8 @@ class NormalizingFlow(nn.Module):
         else:
             self.b_mask = b_mask  # must have shape (1, frame_dim)
         
+        self.b_mask = self.b_mask.to(self.device)
+        #self.rescale = torch.nn.utils.weight_norm(Rescale(frame_dim))
         self.rescale = torch.nn.utils.weight_norm(Rescale(frame_dim))
 
         self.frame_dim = frame_dim
@@ -31,7 +33,7 @@ class NormalizingFlow(nn.Module):
         self.num_flow_layers = num_flow_layers
         self.flow_layers = nn.ModuleList(
             [FlowLayer(frame_dim, encoding_dim, hidden_layer_dim, num_hidden_layers, 
-                       toeplitz, self.rescale) 
+                       toeplitz, self.rescale, device=self.device) 
             for _ in range(self.num_flow_layers)]
         )
 
@@ -50,8 +52,9 @@ class NormalizingFlow(nn.Module):
         loglike_seq = 0
 
         # if init_hidden_state is True, we fill it with zeros
-        h_encoding = torch.zeros((batch_size, self.encoding_dim))
-        
+        #h_encoding = torch.zeros((batch_size, self.encoding_dim))
+        h_encoding = torch.zeros((batch_size, self.encoding_dim)).to(self.device)
+
         for frame_instant, x_frame in enumerate(x_sequence):
             
             loglike_frame = self.loglike_frame(x_frame, h_encoding)
@@ -102,7 +105,7 @@ class NormalizingFlow(nn.Module):
         # given a vector z, this is just -0.5 * zT @ z, but we have a batch
         #NOTE: @Aleix, when we take the log of a multi-variate Gaussian distribution,
         # We also have a constant term to account: 0.5*N*log_{e}(2*pi)
-        loglike_frame += -0.5 * f_utils.row_wise_dot_product(z_latent) - 0.5 * z_latent.size(1) * torch.log(torch.Tensor([2*math.pi]))
+        loglike_frame += -0.5 * f_utils.row_wise_dot_product(z_latent) - 0.5 * z_latent.size(1) * torch.log(torch.Tensor([2*math.pi])).to(self.device)
         
         # to keep the shape (batch_size, 1)
         return loglike_frame

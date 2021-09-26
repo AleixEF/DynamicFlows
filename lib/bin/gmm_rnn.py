@@ -53,6 +53,7 @@ class GMM_RNN_gen_model(nn.Module):
         
             for i, gmm_rnn_model in enumerate(self.list_of_models):
                 
+                gmm_rnn_model = gmm_rnn_model.to(self.device)
                 gmm_rnn_model.eval()  
                 #eval_running_loss = 0.0
                 eval_NLL_loss_epoch_sum = 0.0
