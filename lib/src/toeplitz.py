@@ -10,7 +10,7 @@ import torch
 from torch import nn
 from torch.autograd import Function
 import math
-
+from scipy.linalg import toeplitz
 
 class LinearToeplitz(nn.Module):
     def __init__(self, input_features, output_features, device='cpu'):
@@ -21,8 +21,9 @@ class LinearToeplitz(nn.Module):
         self.device = device
 
         # a toeplitz matrix has n_rows + n_cols -1 independent params
-        self.toeplitz_params = nn.Parameter(
-            torch.empty((output_features + input_features - 1)))
+        #self.toeplitz_params = nn.Parameter(
+        #    torch.empty((output_features + input_features - 1)))
+        self.toeplitz_params = nn.Parameter(torch.empty((output_features + input_features)))
         self.bias = nn.Parameter(torch.empty(output_features))
 
         # same init as nn.Linear
@@ -32,9 +33,10 @@ class LinearToeplitz(nn.Module):
 
     def forward(self, x_input):
         #print(self.output_features, self.input_features)
-        weight = create_toeplitz_matrix(self.toeplitz_params,
-                                        (self.output_features,
-                                         self.input_features), device=self.device).to(self.device)
+        #weight = create_toeplitz_matrix(self.toeplitz_params,
+        #                                (self.output_features,
+        #                                 self.input_features), device=self.device).to(self.device)
+        weight = torch.from_numpy(toeplitz(c=self.toeplitz_params[:self.output_features].detach().cpu(), r=self.toeplitz_params[self.output_features:].detach().cpu())).to(self.device)
         #print(weight.device)
         return LinearFunction.apply(x_input, weight, self.bias)
 
