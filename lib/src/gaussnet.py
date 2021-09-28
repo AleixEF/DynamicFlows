@@ -38,7 +38,6 @@ class MixtureGaussiansNet(nn.Module):
             # the output dim must be n_components*frame_dim
             # because it will return the mean for each component
             self.hidden2means = nn.Linear(hidden_dim, n_components*frame_dim)
-            #self.hidden2means = LinearToeplitz(hidden_dim, n_components*frame_dim, self.device)
 
             # assuming diagonal covariance matrices, sigmoid ensures positive semi-definite
             #self.hidden2covariances = nn.Sequential(
@@ -48,7 +47,7 @@ class MixtureGaussiansNet(nn.Module):
             #NOTE: Instead of covs, we model standard devs, maybe it solves the problem making these
             # covs easier to work with
             self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Sigmoid())
-            #self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Sigmoid())
+            #self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Softplus())
 
         else:
             self.input2hidden = nn.Sequential(
@@ -71,7 +70,8 @@ class MixtureGaussiansNet(nn.Module):
             
             #NOTE: Instead of covs, we model standard devs, maybe it solves the problem making these
             # covs easier to work with
-            #self.hidden2stddevs = nn.Sequential(nn.Linear(hidden_dim, n_components * frame_dim), nn.Sigmoid())
+            
+            #self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Softplus())
             self.hidden2stddevs = nn.Sequential(LinearToeplitz(hidden_dim, n_components * frame_dim, self.device), nn.Sigmoid())
 
         # Pushing all the weight matrices to the specific device
