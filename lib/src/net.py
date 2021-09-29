@@ -38,6 +38,8 @@ class NeuralNetwork(nn.Module):
         else:
             self.combined2hidden = nn.Sequential(
                 nn.Linear(frame_dim+esn_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
                 nn.ReLU())
             
         # we stack a linear and a relu as many times as num_hidden_layers-1

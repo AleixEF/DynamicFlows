@@ -28,7 +28,10 @@ class MixtureGaussiansNet(nn.Module):
         if use_toeplitz == False:
             self.input2hidden = nn.Sequential(
                 nn.Linear(encoding_dim, hidden_dim),
-                nn.ReLU())
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU()
+                )
             
             # a softmax function will be applied in order to get the mixure weights
             self.hidden2mixture_weights = nn.Sequential(
