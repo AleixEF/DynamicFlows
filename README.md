@@ -1,17 +1,5 @@
-# Dynamic normalizing flows parameterized using recurrent neural networks
-
-This repository is created to contain code related to the project *'Dynamic normalizing flows using recurrent neural networks'*. 
-
-List of tasks:
-- [ ] Modify data loader code to include functionality for creating validation dataset
-- [ ] Setup training loop
-- [ ] Setup prediction function that takes trained models and gets negative log-likelihood, evaluation metrics.
-- [ ] One `train_esn_flow` function that runs a single model on a single dataset corresponding to a phoneme.
-- [ ] Add functionality for grid-search to ensure parameters are tuned using validation set data.
-- [x] Integrate toeplitz matrix without using pytorch 1.9 (Aleix and Anubhab).
-- [x] The dataloader and data utils for the Timit dataset (Anubhab)
-- [x] Add batch normalization to the net (we will just use a low learning rate)
-- [ ] Add functionality for generating sequences (by sampling from the latent variable) (*Future*)
+# Time-varying normalizing flow for dynamical signals
+This repository is created to contain code related to the project *'Time-varying normalizing flow for dynamical signals'*. 
 
 ## System requirements
 - Python 3 (specific versions of packages to be added later)
@@ -19,117 +7,90 @@ List of tasks:
     - Scipy
     - Matplotlib
     - scikit-learn
-      
+     
 - PyTorch 1.x (x = 6)
 
-## Code Requirements
-- The code must be general enough such that it is easy to add more than 2 normalizing flow layers.
-- The code must allow creating a mixture model of normalizing flows.
+## Variable names vs. Latex symbols in the report
+- frame_dim vs. $D$  
+- esn_dim vs. $N$  
+- h_esn vs. $h_t$
+- q_hidden vs. $q_{t}$  
+- hidden_dim vs. $l$  (the dimension of the variable q)  
+- slope vs. $s_{t}$  
+- intercept vs. $\mu_{t}$
+- x_frame vs. $x_{t}$  
+- b_mask vs. $b$  
 
-## Variable names VS Report names
-- frame_dim VS D  
-- esn_dim VS N  
-- h_esn VS h_t
-- q_hidden VS q  
-- hidden_dim VS l  (the dimension of the variable q)  
-- slope VS s  
-- intercept VS mu
-- x_frame VS x_t  
-- b_mask VS b  
-
-## Proposed folder structure
-I think it will greatly benefit in the long run if we can have folders for storing specific files instead of dumping all the code in the main / project folder.
+## Folder structure
 ```
 data/ # This directory would contain the data and related information
-main.py # The main function that would run the program
+    - hmm_data/ # This directory contains some test data generated using a GMM-HMM to test the performance of TVNFs and TV-GMMs
+
+- config/ # This directory would contain the .json files containing configurations for the hyperparameters|   
+|   - configurations.json
+|   - configurations_hmm.json
+
 lib/ # The father package containing the different modules.
-|    - __init__.py
-|
-|    -config/ # This directory would contain the .json files containing configurations for the hyperparameters
-|         |    - __init__.py
-|         |    - config_flows.json
-|         |    - config_esn.json
-|     
-|    -src/ # This would contain files containing modules
-|         |    - __init__.py
-|         |    - flows.py
-|         |    - esn.py
-|         |    - net.py
-|    -utils/ #This would contain .py files having helper functions that are called by files in /src/
-|         |    - __init__.py
-|         |    - preprocess.py
-|         |    - flow_layer_utils.py
-|         |    - data_utils.py
-|    
+|   | - __init__.py
+    | - src/ # This directory contains the code for low-level functions which is called by functions in /lib/bin (most cases). Principal files of interest are listed below:
+        |     - __init__.py
+        |     - gaussnet.py
+        |     - mixture.py
+        |     - net.py
+        |     - rnn_flows.py
+        |     - toeplitz.py
+        |     - timit_preprocessor/ # Details described below
+  | - bin/ # This directory contains the source code which is called by functions at the 'main' level. Principal files of interest are listed below:
+        |     - __init__.py
+        |     - dyn_rnn_flow.py
+        |     - gmm_rnn.py
+        |     - load_models.py
+        |     - prepare_data.py
+        |     - prepare_hmm_data.py
+  | - utils/ # This directory contains the code for helper functions that are called mainly by functions in lib/src/.  Principal files of interest are listed below:
+        |     - __init__.py
+        |     - flow_lyaer_utils.py
+        |     - data_utils.py
+        |     - hmm.py
+        |     - training_utils.py
+
 docs/ #This will contain useful files that can be adapted or reused for our project and also information files.
 |
+
 tests/ # To check performance and debugging
     -context.py # to import the lib packages handling the different path. The test files will do: 
     from context import flows, esn
+
+train_dyn_flow_parallel.py # Execute this file to run the training algorithm for TVNFs
+evaluate_dyn_flow_parallel.py # Execute this file to run the evaluation program once TVNF models have been trained
+train_dyn_gmm_parallel.py # Execute this file to run the training algorithm for TV-GMMs
+evaluate_dyn_gmm_parallel.py # Execute this file to run the evaluation program once TV-GMMs models have been trained
 ```
-## Code Skeleton
-### Classes
-I suggest the creation of the following classes:
-#### NeuralNetwork
-From the Pytorch nn.Module super class. It contains the nn parameters.  
-Constructor defines the model parameters and activations, it receives:  
-- frame_dim     
-- last_dim  
-- esn_dim      
-Forward method returns:  
-- slope, intercept
+## Examples: 
+Here we show an example of how to run the models for a 5-class classification task. Most of the help instructions can be obtained by executing `--help` for the concerned .py file.
+```
+python3 train_dyn_flow_parallel.py --help
+```
+Firstly split the data into training and testing by running the pre-processing scripts in lib/src/timit_preprocessing/ similar to:
+[https://github.com/anubhabghosh/genhmm/tree/master/src/timit-preprocessor](https://github.com/anubhabghosh/genhmm/tree/master/src/timit-preprocessor). There after run the script `lib/bin/prepare_data.py` to split the training and testing data files into training, validation and testing files on a class-wise basis. It is assumed that you have access to the TIMIT dataset [https://catalog.ldc.upenn.edu/LDC93S1](https://catalog.ldc.upenn.edu/LDC93S1) for reproducing the results.
 
-Class suggestion:  
-We have added the functionallity that allows choosing the number of hidden layers.
-All hidden layers will have the same input and output dimensions, which will be the dimension of the variable q, named (hidden_dim).
-The first layer, combined to hidden, can have Toeplitz matrix constraint.
+Assume a directory for storing the experiments is created as (while being in main project directory). Here we show an example for creating an experiment directory 
+```
+mkdir /exp/
+cd exp/
+mkdir 5_classes/
+cd 5_classes/
+mkdir dyn_rnn_flow_clean/
+```
+Configurations can be set by changing the parameters in the appropriate `.json` file under `/config/`
 
-
-#### FlowLayer
-A single flow layer.
-Constructor creates and saves a nn object with random params. It receives:  
-- net_model_class (the NeuralNetwork class)
-- frame_dim     
-- last_dim  
-- esn_dim      
-
-Method inverse(x_frame, h_esn, b_mask):
-b_mask can be b_A or b_B, because the functional form is the same.  
-returns f_x    
-
-Method transform(z, h_esn, b_mask)    
-returns g_z
-
-
-#### NormalizingFlow
-Todefine
-
-### Challenges:
-- [x] Decide upon the structure for handling variable length sequences. Whether to use *masks + padding upto max.length* or *something similar to pack_padded_sequences*? 
-A sequence will have shape (T_max, batch_size, frame_dim).  
-
-`T_max` would denote the maximum length of the sequence over all `N` sequences in the dataset (i.e. `T_max = max(T_1, T_2, T_3, ..., T_N).
-
-- [ ] Write dataloaders and related utils (possibility to reuse some if TIMIT dataset is used from previous project (*Anubhab*)).
-
-- [ ] Think about ways on optimizing the training and computation for the setup. Currently, we think that the computation would be something like:
-    ```
-    for epoch in range(nepochs):
-        for n, data, ..., in enumerate(dataloader):
-            for n_seq, seq in enumerate(range(len(data))):
-                # Possibly another for loop here as well
-                # for t in range(seq[1]):
-
-            # do something here 
-    ```
-    *Update:* Due to memory concerns, it will be better to get batch-wise encodings from the echo state network while in the training loop since, the operation doesn't involve computing gradients. 
-
-## Variable shapes
-
-- x_seq: (seq_length, batch_sie, frame_dim)
-- P(x_seq): (batch_size, 1) 
-- P(x_t|x_1:t-1): (batch_size, 1) !! but will require multiplying by a mask at each time step
-- The mask at each time step can be generated from a fixed vector containing the true lenght of each sequence in the batch.
-- The dataloader must give at each call (x_seq, true_lengths).
-- b_mask: (1, batch_size)
-
+### Running a training task for 5 classes:
+While being at the main project directory, for training the models, execute
+```
+python3 train_dyn_flow_parallel.py --train_data ./data/train.39.pkl --val_data ./data/val.39.pkl --num_classes 5 --num_jobs 2 --classmap ./data/class_map.json --config ./exp/5_classes/dyn_rnn_flow_clean/config/configurations.json --expname_basefolder ./exp/5_classes/dyn_rnn_flow_clean/ --noise_type clean --model_type dyn_rnn_flow
+```
+Then you evaluate the trained models on test data by executing:
+```
+python3 evaluate_dyn_flow.py --eval_data ./data/test.39.pkl --num_classes 5 --classmap ./data/class_map.json --config ./exp/5_classes/dyn_rnn_flow_clean/config/configurations.json --expname_basefolder ./exp/5_classes/dyn_rnn_flow_clean/ --dataset_type test --noise_type clean --model_name dyn_rnn_flow
+```
+You can also also evaluate on validation data by providing the correct argument in `eval_data`, i.e. `./data/val.39.pkl` and provide `dataset_type` as `test`.
