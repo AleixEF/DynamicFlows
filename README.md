@@ -66,6 +66,9 @@ evaluate_dyn_flow_parallel.py # Execute this file to run the evaluation program 
 train_dyn_gmm_parallel.py # Execute this file to run the training algorithm for TV-GMMs
 evaluate_dyn_gmm_parallel.py # Execute this file to run the evaluation program once TV-GMMs models have been trained
 ```
+## Tests:
+TODO. The section under /tests/ require some cleanup and we're working on it.
+
 ## Examples: 
 Here we show an example of how to run the models for a 5-class classification task. Most of the help instructions can be obtained by executing `--help` for the concerned .py file.
 ```
