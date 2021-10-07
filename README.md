@@ -57,17 +57,11 @@ lib/ # The father package containing the different modules.
 docs/ #This will contain useful files that can be adapted or reused for our project and also information files.
 |
 
-tests/ # To check performance and debugging
-    -context.py # to import the lib packages handling the different path. The test files will do: 
-    from context import flows, esn
-
 train_dyn_flow_parallel.py # Execute this file to run the training algorithm for TVNFs
 evaluate_dyn_flow_parallel.py # Execute this file to run the evaluation program once TVNF models have been trained
 train_dyn_gmm_parallel.py # Execute this file to run the training algorithm for TV-GMMs
 evaluate_dyn_gmm_parallel.py # Execute this file to run the evaluation program once TV-GMMs models have been trained
 ```
-## Tests:
-TODO. The section under /tests/ require some cleanup and we're working on it.
 
 ## Examples: 
 Here we show an example of how to run the models for a 5-class classification task. Most of the help instructions can be obtained by executing `--help` for the concerned .py file.
